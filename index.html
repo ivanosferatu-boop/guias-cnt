@@ -15,7 +15,6 @@
         .bg-cnt { background-color: #0055a4; }
         .text-cnt { color: #0055a4; }
         
-        /* Formato de Guía Física */
         .guia-documento {
             width: 210mm;
             min-height: 140mm;
@@ -85,7 +84,7 @@
                 <div class="bg-white rounded-2xl shadow-xl border overflow-hidden">
                     <div class="bg-blue-50 p-4 border-b flex justify-between items-center">
                         <h2 class="font-bold text-cnt flex items-center gap-2 uppercase text-sm"><i class="fas fa-plus-circle"></i> Generar Nueva Guía de Remisión</h2>
-                        <span class="text-xs font-mono font-bold bg-white px-3 py-1 rounded-full border border-blue-200" id="nextGuiaID">ID: CNT-10520</span>
+                        <span class="text-xs font-mono font-bold bg-white px-3 py-1 rounded-full border border-blue-200" id="nextGuiaID">ID: CNT-Cargando...</span>
                     </div>
                     
                     <form id="mainGuiaForm" class="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -188,7 +187,7 @@
                 <div class="flex justify-between items-center bg-white p-6 rounded-2xl shadow border">
                     <div>
                         <h2 class="font-bold text-xl text-gray-800 uppercase">Historial de Guías Generadas</h2>
-                        <p class="text-xs text-gray-400">Guías registradas durante la sesión actual</p>
+                        <p class="text-xs text-gray-400">Datos persistentes en la nube</p>
                     </div>
                     <button onclick="descargarHistorial()" class="bg-green-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-green-700 flex items-center gap-2 transition shadow-lg">
                         <i class="fas fa-file-excel"></i> DESCARGAR REPORTE (CSV)
@@ -208,11 +207,9 @@
                                 <th class="px-6 py-4">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody id="tabla-historial-body" class="divide-y">
-                            <!-- Se llena al generar guías -->
-                        </tbody>
+                        <tbody id="tabla-historial-body" class="divide-y"></tbody>
                     </table>
-                    <div id="empty-history" class="p-20 text-center text-gray-300 font-bold uppercase italic">No hay guías registradas en esta sesión.</div>
+                    <div id="empty-history" class="p-20 text-center text-gray-300 font-bold uppercase italic">Cargando historial desde la nube...</div>
                 </div>
             </div>
 
@@ -227,7 +224,7 @@
                         <p class="text-sm text-blue-300 uppercase tracking-widest font-bold">Verifique los datos antes del despacho</p>
                     </div>
                     <div class="flex gap-4">
-                        <button onclick="finalizarEImprimir()" class="bg-green-600 text-white px-10 py-5 rounded-xl font-bold shadow-lg hover:bg-green-700 flex items-center gap-3 scale-110 transition-all border-b-4 border-green-800 active:translate-y-1 active:border-b-0">
+                        <button id="btn-finalizar" onclick="finalizarEImprimir()" class="bg-green-600 text-white px-10 py-5 rounded-xl font-bold shadow-lg hover:bg-green-700 flex items-center gap-3 scale-110 transition-all border-b-4 border-green-800 active:translate-y-1 active:border-b-0">
                             <i class="fas fa-print text-xl"></i> IMPRIMIR Y FINALIZAR
                         </button>
                         <button onclick="closePreview()" class="bg-white/10 text-white px-6 py-5 rounded-xl hover:bg-white/20 font-bold border border-white/20">VOLVER A EDITAR</button>
@@ -235,6 +232,7 @@
                 </div>
 
                 <div id="documentoFinal" class="guia-documento shadow-2xl">
+                    <!-- Contenido del documento (igual al anterior) -->
                     <div class="flex justify-between items-start mb-6">
                         <div class="flex gap-4 items-center">
                             <div class="bg-cnt text-white px-4 py-2 font-bold text-3xl italic">CNT</div>
@@ -247,7 +245,7 @@
                         <div class="text-right">
                             <div class="border-2 border-black p-2 mb-1">
                                 <p class="text-[8px] font-bold">NÚMERO DE GUÍA INTERNA</p>
-                                <p class="text-xl font-mono font-bold" id="p-id">CNT-10520</p>
+                                <p class="text-xl font-mono font-bold" id="p-id">CNT-00000</p>
                             </div>
                             <p class="text-[10px] font-bold">FECHA EMISIÓN: <span id="p-fecha"></span></p>
                         </div>
@@ -306,63 +304,146 @@
 
     </div>
 
-    <script>
-        let CONTACTOS = [
-            { id: 1, nombre: "CNT MATRIZ QUITO - BODEGA CENTRAL", ruc: "1768152560001", tel: "022999000", ciudad: "QUITO", dir: "Av. Amazonas N36-49 y Corea" },
-            { id: 2, nombre: "CNT AGENCIA GUAYAQUIL - LOGÍSTICA", ruc: "1768152560001", tel: "042555111", ciudad: "GUAYAQUIL", dir: "Vía Daule Km 7.5" },
-            { id: 3, nombre: "AGENCIA CUENCA - SOPORTE", ruc: "1768152560001", tel: "072888222", ciudad: "CUENCA", dir: "Calle Larga y Borrero" }
-        ];
+    <!-- FIREBASE SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, collection, addDoc, onSnapshot, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        let CONTACTOS = [];
         let HISTORIAL = [];
-        let guiaCounter = 10520;
-        let guiaActual = null;
+        let guiaCounter = 10000;
+        let currentUser = null;
+        let unsubContactos = null;
+        let unsubHistorial = null;
 
-        function login() {
-            document.getElementById('loginSection').classList.add('hidden');
-            document.getElementById('appSection').classList.remove('hidden');
-            renderizarDirectorio();
-            actualizarSelects();
-            updateID();
+        // --- REGLA 3: AUTH ANTES DE QUERIES ---
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Error crítico de autenticación:", error);
+            }
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                console.log("Sesión activa:", user.uid);
+                currentUser = user;
+                // Limpiar suscripciones previas si existen
+                if (unsubContactos) unsubContactos();
+                if (unsubHistorial) unsubHistorial();
+                
+                // Iniciar suscripciones seguras
+                suscribirseADatos();
+            } else {
+                currentUser = null;
+            }
+        });
+
+        // Ejecutar Auth
+        initAuth();
+
+        function suscribirseADatos() {
+            if (!currentUser) return;
+
+            const contactosCol = collection(db, 'artifacts', appId, 'public', 'data', 'contactos');
+            const historialCol = collection(db, 'artifacts', appId, 'public', 'data', 'historial');
+
+            // Suscripción Contactos
+            unsubContactos = onSnapshot(contactosCol, (snapshot) => {
+                CONTACTOS = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                actualizarSelects();
+                renderizarDirectorio();
+            }, (error) => {
+                console.error("Error contactos:", error);
+            });
+
+            // Suscripción Historial
+            unsubHistorial = onSnapshot(historialCol, (snapshot) => {
+                HISTORIAL = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // REGLA 2: Ordenar en memoria
+                HISTORIAL.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                
+                renderizarHistorial();
+                
+                if (HISTORIAL.length > 0) {
+                    const ids = HISTORIAL.map(h => parseInt(h.guiaId.split('-')[1])).filter(n => !isNaN(n));
+                    const maxId = Math.max(...ids, 9999);
+                    guiaCounter = maxId + 1;
+                    updateID();
+                } else {
+                    updateID();
+                }
+            }, (error) => {
+                console.error("Error historial:", error);
+            });
         }
 
-        function agregarContacto() {
+        // --- FUNCIONES UI ---
+
+        window.login = function() {
+            const user = document.getElementById('user').value;
+            if(!user) return;
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('appSection').classList.remove('hidden');
+        };
+
+        window.agregarContacto = async function() {
+            if (!currentUser) return alert("Esperando conexión...");
             const nombre = document.getElementById('dir-nombre').value;
             const ruc = document.getElementById('dir-ruc').value;
             const tel = document.getElementById('dir-tel').value;
             const ciudad = document.getElementById('dir-ciudad').value;
             const dir = document.getElementById('dir-dir').value;
 
-            if(!nombre || !ruc || !ciudad) {
-                alert("Nombre, RUC y Ciudad son obligatorios.");
-                return;
+            if(!nombre || !ruc || !ciudad) return alert("Nombre, RUC y Ciudad son obligatorios.");
+
+            try {
+                const contactosCol = collection(db, 'artifacts', appId, 'public', 'data', 'contactos');
+                await addDoc(contactosCol, {
+                    nombre: nombre.toUpperCase(),
+                    ruc: ruc,
+                    tel: tel || "N/A",
+                    ciudad: ciudad.toUpperCase(),
+                    dir: dir.toUpperCase() || "SIN DIRECCIÓN",
+                    createdAt: serverTimestamp()
+                });
+                document.getElementById('form-directorio').reset();
+            } catch (e) {
+                console.error(e);
             }
+        };
 
-            const nuevo = {
-                id: Date.now(),
-                nombre: nombre.toUpperCase(),
-                ruc: ruc,
-                tel: tel || "N/A",
-                ciudad: ciudad.toUpperCase(),
-                dir: dir.toUpperCase() || "SIN DIRECCIÓN"
-            };
-
-            CONTACTOS.push(nuevo);
-            document.getElementById('form-directorio').reset();
-            renderizarDirectorio();
-            actualizarSelects();
-        }
+        window.eliminarContacto = async function(id) {
+            if (!currentUser || !confirm("¿Eliminar este contacto?")) return;
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'contactos', id));
+            } catch (e) { console.error(e); }
+        };
 
         function renderizarDirectorio() {
             const lista = document.getElementById('lista-contactos');
+            if(!lista) return;
             lista.innerHTML = '';
             CONTACTOS.forEach(c => {
                 lista.innerHTML += `
-                    <tr class="hover:bg-gray-50 transition-colors">
-                        <td class="px-6 py-4 font-semibold text-gray-800">${c.nombre}</td>
-                        <td class="px-6 py-4 text-gray-600">${c.ciudad}</td>
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 font-semibold">${c.nombre}</td>
+                        <td class="px-6 py-4">${c.ciudad}</td>
                         <td class="px-6 py-4 font-mono text-xs">${c.ruc}</td>
-                        <td class="px-6 py-4 text-gray-600">${c.tel}</td>
-                        <td class="px-6 py-4"><button onclick="eliminarContacto(${c.id})" class="text-red-400 hover:text-red-600"><i class="fas fa-trash-alt"></i></button></td>
+                        <td class="px-6 py-4">${c.tel}</td>
+                        <td class="px-6 py-4"><button onclick="eliminarContacto('${c.id}')" class="text-red-400 hover:text-red-600"><i class="fas fa-trash-alt"></i></button></td>
                     </tr>
                 `;
             });
@@ -371,14 +452,15 @@
         function actualizarSelects() {
             const r = document.getElementById('sel-remitente');
             const d = document.getElementById('sel-destinatario');
+            if(!r || !d) return;
             let ops = '<option value="">-- Seleccionar Frecuente --</option>';
             CONTACTOS.forEach(c => ops += `<option value="${c.id}">${c.nombre} (${c.ciudad})</option>`);
             r.innerHTML = ops; d.innerHTML = ops;
         }
 
-        function fillData(field) {
+        window.fillData = function(field) {
             const id = document.getElementById(`sel-${field}`).value;
-            const c = CONTACTOS.find(x => x.id == id);
+            const c = CONTACTOS.find(x => x.id === id);
             if(!c) return;
             const p = field === 'remitente' ? 'o-' : 'd-';
             document.getElementById(p+'nombre').value = c.nombre;
@@ -386,11 +468,13 @@
             document.getElementById(p+'tel').value = c.tel;
             document.getElementById(p+'ciudad').value = c.ciudad;
             if(field === 'destinatario') document.getElementById('d-dir').value = c.dir;
-        }
+        };
 
-        function prepararGuia() {
+        let guiaActual = null;
+
+        window.prepararGuia = function() {
             const data = {
-                id: `CNT-${guiaCounter}`,
+                guiaId: `CNT-${guiaCounter}`,
                 fecha: new Date().toLocaleString(),
                 origen: {
                     nombre: document.getElementById('o-nombre').value,
@@ -412,19 +496,14 @@
                     tipo: document.getElementById('c-tipo').value
                 }
             };
-
-            if(!data.origen.nombre || !data.destino.nombre) {
-                alert("Origen y Destino son obligatorios.");
-                return;
-            }
-
+            if(!data.origen.nombre || !data.destino.nombre) return alert("Origen y Destino son obligatorios.");
             guiaActual = data;
             cargarEnPreview(data);
             document.getElementById('previewModal').classList.remove('hidden');
-        }
+        };
 
         function cargarEnPreview(data) {
-            document.getElementById('p-id').innerText = data.id;
+            document.getElementById('p-id').innerText = data.guiaId;
             document.getElementById('p-fecha').innerText = data.fecha;
             document.getElementById('p-o-ruc').innerText = data.origen.ruc || "N/A";
             document.getElementById('p-o-nombre').innerText = data.origen.nombre;
@@ -438,89 +517,87 @@
             document.getElementById('p-tipo').innerText = data.carga.tipo;
             document.getElementById('p-cant').innerText = data.carga.cant;
             document.getElementById('p-desc').innerText = data.carga.desc;
-            document.getElementById('p-peso').innerText = data.carga.peso + " KG";
+            document.getElementById('p-peso').innerText = (data.carga.peso || "0") + " KG";
         }
 
-        function finalizarEImprimir() {
-            window.print();
-            setTimeout(() => { registrarYContinuar(); }, 800);
-        }
+        window.finalizarEImprimir = function() { window.print(); setTimeout(() => { registrarYContinuar(); }, 800); };
+        window.finalizarSinImprimir = function() { registrarYContinuar(); };
 
-        function finalizarSinImprimir() { registrarYContinuar(); }
-
-        function registrarYContinuar() {
-            HISTORIAL.unshift({...guiaActual});
-            renderizarHistorial();
-            guiaCounter++;
-            guiaActual = null;
-            resetForm();
-            closePreview();
-            showTab('historial');
+        async function registrarYContinuar() {
+            if (!currentUser || !guiaActual) return;
+            try {
+                const historialCol = collection(db, 'artifacts', appId, 'public', 'data', 'historial');
+                await addDoc(historialCol, {
+                    ...guiaActual,
+                    createdAt: serverTimestamp(),
+                    createdBy: currentUser.uid
+                });
+                resetForm();
+                closePreview();
+                showTab('historial');
+            } catch (e) { console.error(e); }
         }
 
         function renderizarHistorial() {
             const body = document.getElementById('tabla-historial-body');
             const empty = document.getElementById('empty-history');
+            if(!body) return;
             body.innerHTML = '';
-            
             if(HISTORIAL.length === 0) {
                 empty.classList.remove('hidden');
                 return;
             }
             empty.classList.add('hidden');
-
-            HISTORIAL.forEach((g, index) => {
+            HISTORIAL.forEach(g => {
                 body.innerHTML += `
-                    <tr class="hover:bg-blue-50 transition-colors border-l-4 border-transparent hover:border-cnt">
-                        <td class="px-6 py-4 font-mono font-bold text-cnt">${g.id}</td>
+                    <tr class="hover:bg-blue-50 border-l-4 border-transparent hover:border-cnt">
+                        <td class="px-6 py-4 font-mono font-bold text-cnt">${g.guiaId}</td>
                         <td class="px-6 py-4 text-xs">${g.fecha}</td>
                         <td class="px-6 py-4 text-xs font-semibold">${g.origen.nombre}</td>
                         <td class="px-6 py-4 text-xs font-semibold">${g.destino.nombre}</td>
                         <td class="px-6 py-4 text-xs">${g.destino.ciudad}</td>
                         <td class="px-6 py-4"><span class="bg-gray-100 px-2 py-1 rounded text-[10px] font-bold">${g.carga.tipo}</span></td>
-                        <td class="px-6 py-4">
-                            <button onclick="reimprimir(${index})" class="text-cnt hover:underline font-bold text-xs">VER / REIMPRIMIR</button>
-                        </td>
+                        <td class="px-6 py-4"><button onclick="reimprimir('${g.id}')" class="text-cnt hover:underline font-bold text-xs">VER</button></td>
                     </tr>
                 `;
             });
         }
 
-        function reimprimir(index) {
-            guiaActual = HISTORIAL[index];
-            cargarEnPreview(guiaActual);
+        window.reimprimir = function(id) {
+            const guia = HISTORIAL.find(h => h.id === id);
+            if (!guia) return;
+            cargarEnPreview(guia);
             document.getElementById('previewModal').classList.remove('hidden');
-        }
+        };
 
-        function descargarHistorial() {
-            if(HISTORIAL.length === 0) return alert("No hay datos para exportar.");
-            let csv = "ID,FECHA,REMITENTE,RUC_ORIGEN,DESTINATARIO,CIUDAD_DESTINO,TIPO,CANTIDAD,PESO\n";
+        window.descargarHistorial = function() {
+            if(HISTORIAL.length === 0) return alert("No hay datos.");
+            let csv = "ID,FECHA,REMITENTE,DESTINATARIO,CIUDAD_DESTINO,TIPO\n";
             HISTORIAL.forEach(g => {
-                csv += `"${g.id}","${g.fecha}","${g.origen.nombre}","${g.origen.ruc}","${g.destino.nombre}","${g.destino.ciudad}","${g.carga.tipo}","${g.carga.cant}","${g.carga.peso}"\n`;
+                csv += `"${g.guiaId}","${g.fecha}","${g.origen.nombre}","${g.destino.nombre}","${g.destino.ciudad}","${g.carga.tipo}"\n`;
             });
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.setAttribute('hidden', '');
-            a.setAttribute('href', url);
-            a.setAttribute('download', `reporte_guias_cnt_${Date.now()}.csv`);
-            document.body.appendChild(a);
+            a.href = url;
+            a.download = `guias_cnt.csv`;
             a.click();
-            document.body.removeChild(a);
-        }
+        };
 
-        function resetForm() { document.getElementById('mainGuiaForm').reset(); updateID(); }
-        function updateID() { document.getElementById('nextGuiaID').innerText = `ID: CNT-${guiaCounter}`; }
-        function closePreview() { document.getElementById('previewModal').classList.add('hidden'); document.body.style.overflow = 'auto'; }
-        
-        function showTab(tab) {
+        window.resetForm = function() { document.getElementById('mainGuiaForm').reset(); updateID(); };
+        function updateID() { 
+            const el = document.getElementById('nextGuiaID');
+            if(el) el.innerText = `ID: CNT-${guiaCounter}`; 
+        }
+        window.closePreview = function() { document.getElementById('previewModal').classList.add('hidden'); };
+        window.showTab = function(tab) {
             ['nueva', 'directorio', 'historial'].forEach(t => {
                 document.getElementById('view-'+t).classList.add('hidden');
                 document.getElementById('tab-'+t).classList.remove('active');
             });
             document.getElementById('view-'+tab).classList.remove('hidden');
             document.getElementById('tab-'+tab).classList.add('active');
-        }
+        };
 
         setInterval(() => {
             const clock = document.getElementById('liveClock');
