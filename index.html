@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CNT EP - Sistema de Guías</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Inter:wght@400;700&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .font-mono { font-family: 'Roboto Mono', monospace; }
+        
+        .bg-cnt { background-color: #0055a4; }
+        .text-cnt { color: #0055a4; }
+        
+        /* Formato de Guía Física */
+        .guia-documento {
+            width: 210mm;
+            min-height: 140mm;
+            padding: 15mm;
+            background: white;
+            border: 1px solid #000;
+            margin: 0 auto;
+            color: black;
+            position: relative;
+        }
+        
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; padding: 0; margin: 0; }
+            .guia-documento { border: none !important; width: 100% !important; margin: 0 !important; padding: 5mm !important; }
+            #previewModal { position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; background: white !important; display: block !important; }
+            .modal-overlay { background: none !important; }
+        }
+
+        .tab-btn.active {
+            border-bottom: 4px solid #0055a4;
+            color: #0055a4;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- PANTALLA DE ACCESO -->
+    <div id="loginSection" class="min-h-screen flex items-center justify-center bg-slate-900">
+        <div class="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md text-center">
+            <div class="mb-6">
+                <div class="inline-block bg-cnt text-white px-6 py-2 rounded text-4xl font-bold italic mb-2">CNT</div>
+                <h1 class="text-xl font-bold text-gray-800">Logística y Distribución</h1>
+            </div>
+            <div class="space-y-4">
+                <input type="text" id="user" placeholder="Usuario" class="w-full p-4 border rounded-xl outline-none focus:ring-2 ring-blue-500">
+                <input type="password" id="pass" placeholder="Contraseña" class="w-full p-4 border rounded-xl outline-none focus:ring-2 ring-blue-500">
+                <button onclick="login()" class="w-full bg-cnt text-white py-4 rounded-xl font-bold hover:bg-blue-800 transition shadow-lg">INGRESAR AL SISTEMA</button>
+            </div>
+            <p class="mt-6 text-[10px] text-gray-400 uppercase tracking-tighter">Uso exclusivo para personal autorizado CNT EP</p>
+        </div>
+    </div>
+
+    <!-- PANEL PRINCIPAL -->
+    <div id="appSection" class="hidden min-h-screen flex flex-col">
+        <header class="bg-white shadow-md no-print">
+            <div class="bg-gray-800 text-white text-[10px] px-6 py-1 flex justify-between uppercase tracking-widest">
+                <span>Corporación Nacional de Telecomunicaciones CNT EP</span>
+                <span id="liveClock"></span>
+            </div>
+            <div class="flex px-6 items-center">
+                <div class="text-cnt font-bold text-2xl mr-10 italic">CNT</div>
+                <nav class="flex gap-8">
+                    <button onclick="showTab('nueva')" id="tab-nueva" class="tab-btn py-4 active text-sm uppercase">NUEVA GUÍA</button>
+                    <button onclick="showTab('directorio')" id="tab-directorio" class="tab-btn py-4 text-sm uppercase">DIRECTORIO</button>
+                    <button onclick="showTab('historial')" id="tab-historial" class="tab-btn py-4 text-sm uppercase">HISTORIAL</button>
+                </nav>
+                <button onclick="location.reload()" class="ml-auto text-red-500 hover:bg-red-50 p-2 rounded-full" title="Cerrar Sesión"><i class="fas fa-power-off"></i></button>
+            </div>
+        </header>
+
+        <main class="flex-grow p-6 no-print">
+            
+            <!-- VISTA: NUEVA GUÍA -->
+            <div id="view-nueva" class="max-w-5xl mx-auto">
+                <div class="bg-white rounded-2xl shadow-xl border overflow-hidden">
+                    <div class="bg-blue-50 p-4 border-b flex justify-between items-center">
+                        <h2 class="font-bold text-cnt flex items-center gap-2 uppercase text-sm"><i class="fas fa-plus-circle"></i> Generar Nueva Guía de Remisión</h2>
+                        <span class="text-xs font-mono font-bold bg-white px-3 py-1 rounded-full border border-blue-200" id="nextGuiaID">ID: CNT-10520</span>
+                    </div>
+                    
+                    <form id="mainGuiaForm" class="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <!-- ORIGEN -->
+                        <div class="space-y-4">
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Punto de Origen</label>
+                            <select id="sel-remitente" onchange="fillData('remitente')" class="w-full p-3 bg-gray-50 border rounded-xl text-sm mb-4">
+                                <option value="">-- Seleccionar Remitente Frecuente --</option>
+                            </select>
+                            <input type="text" id="o-nombre" placeholder="Nombre de Sucursal / Responsable" class="w-full p-3 border rounded-lg text-sm uppercase font-semibold">
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="text" id="o-ruc" placeholder="RUC / CI" class="p-3 border rounded-lg text-sm">
+                                <input type="text" id="o-tel" placeholder="Teléfono" class="p-3 border rounded-lg text-sm">
+                            </div>
+                            <input type="text" id="o-ciudad" placeholder="Ciudad de Origen" class="w-full p-3 border rounded-lg text-sm uppercase">
+                        </div>
+
+                        <!-- DESTINO -->
+                        <div class="space-y-4">
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Punto de Destino</label>
+                            <select id="sel-destinatario" onchange="fillData('destinatario')" class="w-full p-3 bg-gray-50 border rounded-xl text-sm mb-4">
+                                <option value="">-- Seleccionar Destinatario Frecuente --</option>
+                            </select>
+                            <input type="text" id="d-nombre" placeholder="Nombre de Compañía / Destinatario" class="w-full p-3 border rounded-lg text-sm uppercase font-semibold">
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="text" id="d-ruc" placeholder="RUC / CI" class="p-3 border rounded-lg text-sm">
+                                <input type="text" id="d-tel" placeholder="Teléfono" class="p-3 border rounded-lg text-sm">
+                            </div>
+                            <input type="text" id="d-ciudad" placeholder="Ciudad de Destino" class="w-full p-3 border rounded-lg text-sm uppercase">
+                            <input type="text" id="d-dir" placeholder="Dirección Exacta de Entrega" class="w-full p-3 border rounded-lg text-sm uppercase">
+                        </div>
+
+                        <!-- CARGA -->
+                        <div class="md:col-span-2 bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase mb-3">Detalles de la Carga</label>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div class="col-span-2 md:col-span-1">
+                                    <input type="text" id="c-desc" placeholder="Descripción (Ej: 2 Laptops, 1 Monitor)" class="w-full p-3 border rounded-lg text-sm uppercase">
+                                </div>
+                                <input type="number" id="c-cant" placeholder="Cant." value="1" class="w-full p-3 border rounded-lg text-sm font-bold">
+                                <input type="text" id="c-peso" placeholder="Peso Aprox. (Kg)" class="w-full p-3 border rounded-lg text-sm">
+                                <select id="c-tipo" class="w-full p-3 border rounded-lg text-sm font-bold">
+                                    <option>DOCUMENTOS</option>
+                                    <option>PAQUETE / CAJA</option>
+                                    <option>VALIJA</option>
+                                    <option>ACTIVOS FIJOS</option>
+                                    <option>OTROS</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="md:col-span-2 flex justify-end gap-4 mt-4">
+                            <button type="button" onclick="resetForm()" class="px-6 py-3 text-gray-400 font-bold hover:text-red-500 transition-colors uppercase text-xs">Borrar todo</button>
+                            <button type="button" onclick="prepararGuia()" class="bg-cnt text-white px-12 py-4 rounded-2xl font-bold shadow-xl hover:scale-105 transition-transform flex items-center gap-2">
+                                <i class="fas fa-file-invoice"></i> GENERAR Y REVISAR
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- VISTAS SECUNDARIAS -->
+            <div id="view-directorio" class="hidden max-w-5xl mx-auto"><div class="bg-white p-20 rounded-2xl shadow text-center font-bold text-gray-300 uppercase italic">Módulo de Directorio: Edite el código para agregar contactos permanentes.</div></div>
+            <div id="view-historial" class="hidden max-w-5xl mx-auto"><div class="bg-white p-20 rounded-2xl shadow text-center font-bold text-gray-300 uppercase italic">Módulo de Historial: Requiere integración con base de datos para persistencia.</div></div>
+
+        </main>
+
+        <!-- MODAL DE IMPRESIÓN -->
+        <div id="previewModal" class="modal-overlay fixed inset-0 bg-black/95 z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+            <div class="w-full max-w-5xl my-auto">
+                
+                <div class="flex justify-between items-center mb-6 no-print bg-white/10 p-5 rounded-2xl backdrop-blur-sm border border-white/10">
+                    <div class="text-white">
+                        <h2 class="text-2xl font-bold">VISTA PREVIA DE IMPRESIÓN</h2>
+                        <p class="text-sm text-blue-300 uppercase tracking-widest font-bold">Verifique los datos antes del despacho físico</p>
+                    </div>
+                    <div class="flex gap-4">
+                        <button onclick="finalizarEImprimir()" class="bg-green-600 text-white px-10 py-5 rounded-xl font-bold shadow-lg hover:bg-green-700 flex items-center gap-3 scale-110 transition-all border-b-4 border-green-800 active:translate-y-1 active:border-b-0">
+                            <i class="fas fa-print text-xl"></i> IMPRIMIR Y FINALIZAR
+                        </button>
+                        <button onclick="closePreview()" class="bg-white/10 text-white px-6 py-5 rounded-xl hover:bg-white/20 font-bold border border-white/20">VOLVER A EDITAR</button>
+                    </div>
+                </div>
+
+                <!-- DOCUMENTO PARA IMPRIMIR -->
+                <div id="documentoFinal" class="guia-documento shadow-2xl">
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="flex gap-4 items-center">
+                            <div class="bg-cnt text-white px-4 py-2 font-bold text-3xl italic">CNT</div>
+                            <div class="text-[10px] font-bold leading-tight uppercase">
+                                Corporación Nacional de Telecomunicaciones CNT EP<br>
+                                Matriz: Av. Amazonas N36-49 y Corea<br>
+                                Quito - Ecuador | RUC: 1768152560001
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="border-2 border-black p-2 mb-1">
+                                <p class="text-[8px] font-bold">NÚMERO DE GUÍA INTERNA</p>
+                                <p class="text-xl font-mono font-bold" id="p-id">CNT-10520</p>
+                            </div>
+                            <p class="text-[10px] font-bold">FECHA EMISIÓN: <span id="p-fecha"></span></p>
+                        </div>
+                    </div>
+
+                    <h3 class="text-center font-bold text-lg mb-6 border-y-2 border-black py-1 tracking-[0.3em] uppercase">Guía de Transporte Interno</h3>
+
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div class="border border-black">
+                            <div class="bg-gray-200 font-bold text-[9px] px-2 border-b border-black py-1">DATOS DE ORIGEN (REMITENTE)</div>
+                            <div class="p-3 text-xs space-y-1 uppercase">
+                                <p><strong>RUC/CI:</strong> <span id="p-o-ruc"></span></p>
+                                <p><strong>NOMBRE:</strong> <span id="p-o-nombre"></span></p>
+                                <p><strong>CIUDAD:</strong> <span id="p-o-ciudad"></span></p>
+                                <p><strong>TELÉFONO:</strong> <span id="p-o-tel"></span></p>
+                            </div>
+                        </div>
+                        <div class="border border-black">
+                            <div class="bg-gray-200 font-bold text-[9px] px-2 border-b border-black py-1">DATOS DE DESTINO (DESTINATARIO)</div>
+                            <div class="p-3 text-xs space-y-1 uppercase">
+                                <p><strong>RUC/CI:</strong> <span id="p-d-ruc"></span></p>
+                                <p><strong>NOMBRE:</strong> <span id="p-d-nombre"></span></p>
+                                <p><strong>CIUDAD:</strong> <span id="p-d-ciudad"></span></p>
+                                <p><strong>DIRECCIÓN:</strong> <span id="p-d-dir"></span></p>
+                                <p><strong>TELÉFONO:</strong> <span id="p-d-tel"></span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <table class="w-full border-collapse border border-black mb-12 text-xs">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="border border-black p-2 w-24">TIPO</th>
+                                <th class="border border-black p-2 w-16">CANT</th>
+                                <th class="border border-black p-2">DESCRIPCIÓN DETALLADA DE CARGA</th>
+                                <th class="border border-black p-2 w-24">PESO (KG)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="h-24 text-center uppercase font-bold">
+                                <td class="border border-black p-2" id="p-tipo"></td>
+                                <td class="border border-black p-2" id="p-cant"></td>
+                                <td class="border border-black p-2 text-left align-top" id="p-desc"></td>
+                                <td class="border border-black p-2" id="p-peso"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="grid grid-cols-2 gap-12 mt-16 px-4">
+                        <div class="border-t border-black text-center pt-2">
+                            <p class="text-[9px] font-bold">DESPACHADO POR (FIRMA Y SELLO)</p>
+                            <p class="text-[8px] text-gray-500 mt-1">Responsable CNT Origen</p>
+                        </div>
+                        <div class="border-t border-black text-center pt-2">
+                            <p class="text-[9px] font-bold">RECIBIDO POR (FIRMA Y SELLO)</p>
+                            <p class="text-[8px] text-gray-500 mt-1">Nombre y CI del Destinatario</p>
+                        </div>
+                    </div>
+
+                    <div class="absolute bottom-6 left-0 right-0 text-[8px] text-gray-400 text-center uppercase tracking-tighter italic">
+                        Documento oficial de control interno de activos de la Corporación Nacional de Telecomunicaciones CNT EP. Prohibida su alteración.
+                    </div>
+                </div>
+                
+                <div class="mt-8 text-center no-print flex justify-center gap-6 items-center">
+                    <button onclick="finalizarSinImprimir()" class="text-blue-400 hover:text-white underline text-sm font-bold uppercase tracking-widest">
+                        Omitir impresión y pasar a otra guía
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // CONFIGURACIÓN DE CONTACTOS FRECUENTES
+        const CONTACTOS = [
+            { id: 1, nombre: "CNT MATRIZ QUITO - BODEGA CENTRAL", ruc: "1768152560001", tel: "022999000", ciudad: "QUITO", dir: "Av. Amazonas N36-49 y Corea", tipo: "ORIGEN" },
+            { id: 2, nombre: "CNT AGENCIA GUAYAQUIL - LOGÍSTICA", ruc: "1768152560001", tel: "042555111", ciudad: "GUAYAQUIL", dir: "Vía Daule Km 7.5", tipo: "DESTINO" },
+            { id: 3, nombre: "AGENCIA CUENCA - SOPORTE", ruc: "1768152560001", tel: "072888222", ciudad: "CUENCA", dir: "Calle Larga y Borrero", tipo: "DESTINO" }
+        ];
+
+        let guiaCounter = 10520;
+
+        function login() {
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('appSection').classList.remove('hidden');
+            loadData();
+        }
+
+        function loadData() {
+            const r = document.getElementById('sel-remitente');
+            const d = document.getElementById('sel-destinatario');
+            r.innerHTML = '<option value="">-- Seleccionar Remitente Frecuente --</option>';
+            d.innerHTML = '<option value="">-- Seleccionar Destinatario Frecuente --</option>';
+            CONTACTOS.forEach(c => {
+                const opt = `<option value="${c.id}">${c.nombre} (${c.ciudad})</option>`;
+                r.innerHTML += opt; d.innerHTML += opt;
+            });
+            updateID();
+        }
+
+        function fillData(field) {
+            const id = document.getElementById(`sel-${field}`).value;
+            const c = CONTACTOS.find(x => x.id == id);
+            if(!c) return;
+            const p = field === 'remitente' ? 'o-' : 'd-';
+            document.getElementById(p+'nombre').value = c.nombre;
+            document.getElementById(p+'ruc').value = c.ruc;
+            document.getElementById(p+'tel').value = c.tel;
+            document.getElementById(p+'ciudad').value = c.ciudad;
+            if(field === 'destinatario') document.getElementById('d-dir').value = c.dir;
+        }
+
+        function prepararGuia() {
+            if(!document.getElementById('o-nombre').value || !document.getElementById('d-nombre').value) {
+                alert("Atención: Los nombres de Origen y Destino son obligatorios.");
+                return;
+            }
+
+            // Mapeo a vista de impresión
+            document.getElementById('p-id').innerText = `CNT-${guiaCounter}`;
+            document.getElementById('p-fecha').innerText = new Date().toLocaleString();
+            document.getElementById('p-o-ruc').innerText = document.getElementById('o-ruc').value || "N/A";
+            document.getElementById('p-o-nombre').innerText = document.getElementById('o-nombre').value;
+            document.getElementById('p-o-ciudad').innerText = document.getElementById('o-ciudad').value;
+            document.getElementById('p-o-tel').innerText = document.getElementById('o-tel').value || "N/A";
+
+            document.getElementById('p-d-ruc').innerText = document.getElementById('d-ruc').value || "N/A";
+            document.getElementById('p-d-nombre').innerText = document.getElementById('d-nombre').value;
+            document.getElementById('p-d-ciudad').innerText = document.getElementById('d-ciudad').value;
+            document.getElementById('p-d-tel').innerText = document.getElementById('d-tel').value || "N/A";
+            document.getElementById('p-d-dir').innerText = document.getElementById('d-dir').value || "ENTREGA EN AGENCIA";
+
+            document.getElementById('p-tipo').innerText = document.getElementById('c-tipo').value;
+            document.getElementById('p-cant').innerText = document.getElementById('c-cant').value;
+            document.getElementById('p-desc').innerText = document.getElementById('c-desc').value || "SIN DESCRIPCIÓN";
+            document.getElementById('p-peso').innerText = (document.getElementById('c-peso').value || "0") + " KG";
+
+            document.getElementById('previewModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // Evita scroll de fondo
+        }
+
+        function finalizarEImprimir() {
+            window.print();
+            // Ejecutar limpieza incluso si el usuario cancela la impresión
+            setTimeout(() => {
+                continuarFlujo();
+            }, 800);
+        }
+
+        function finalizarSinImprimir() {
+            if(confirm("¿Está seguro de finalizar sin imprimir? Esto borrará los datos actuales.")) {
+                continuarFlujo();
+            }
+        }
+
+        function continuarFlujo() {
+            guiaCounter++;
+            resetForm();
+            closePreview();
+            showTab('nueva');
+            console.log("Sistema listo para siguiente registro.");
+        }
+
+        function resetForm() {
+            document.getElementById('mainGuiaForm').reset();
+            updateID();
+        }
+
+        function updateID() {
+            document.getElementById('nextGuiaID').innerText = `ID: CNT-${guiaCounter}`;
+        }
+
+        function closePreview() {
+            document.getElementById('previewModal').classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
+        function showTab(tab) {
+            ['nueva', 'directorio', 'historial'].forEach(t => {
+                document.getElementById('view-'+t).classList.add('hidden');
+                document.getElementById('tab-'+t).classList.remove('active');
+            });
+            document.getElementById('view-'+tab).classList.remove('hidden');
+            document.getElementById('tab-'+tab).classList.add('active');
+        }
+
+        setInterval(() => {
+            document.getElementById('liveClock').innerText = new Date().toLocaleString();
+        }, 1000);
+    </script>
+</body>
+</html>
