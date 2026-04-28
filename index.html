@@ -24,9 +24,28 @@
         .role-badge { font-size: 10px; padding: 2px 8px; border-radius: 99px; text-transform: uppercase; font-weight: bold; }
         .role-admin { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
         .role-user { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        
         @media print {
             .no-print { display: none !important; }
-            .guia-documento { border: none !important; width: 100% !important; margin: 0 !important; }
+            body { background: white !important; }
+            .guia-documento { 
+                border: none !important; 
+                width: 100% !important; 
+                margin: 0 !important; 
+                padding: 0 !important;
+                box-shadow: none !important;
+            }
+            #previewModal { 
+                background: white !important; 
+                position: static !important; 
+                display: block !important;
+                padding: 0 !important;
+            }
+            #previewModal > div {
+                box-shadow: none !important;
+                max-width: none !important;
+                padding: 0 !important;
+            }
         }
     </style>
 </head>
@@ -39,11 +58,11 @@
                 <div class="inline-block bg-cnt text-white px-6 py-2 rounded text-4xl font-black italic mb-2">CNT</div>
                 <h1 class="text-xl font-bold text-gray-800">Logística y Distribución</h1>
             </div>
-            <div id="authStatus" class="mb-4 text-sm font-bold text-blue-600 animate-pulse">Conectando con el servidor seguro...</div>
+            <div id="authStatus" class="mb-4 text-sm font-bold text-blue-600 animate-pulse">Iniciando conexión segura...</div>
             <div class="space-y-4">
-                <input type="text" id="userInput" placeholder="Usuario Corporativo" class="w-full p-4 border rounded-xl outline-none focus:ring-2 ring-blue-500">
+                <input type="text" id="userInput" placeholder="Nombre de Usuario / Correo" class="w-full p-4 border rounded-xl outline-none focus:ring-2 ring-blue-500">
                 <button onclick="window.login()" id="loginBtn" disabled class="w-full bg-slate-400 text-white py-4 rounded-xl font-bold transition shadow-lg cursor-not-allowed">
-                    INICIAR SESIÓN
+                    ENTRAR AL SISTEMA
                 </button>
             </div>
         </div>
@@ -56,6 +75,7 @@
                 <div class="flex items-center gap-4">
                     <span>Corporación Nacional de Telecomunicaciones CNT EP</span>
                     <span id="userRoleDisplay" class="role-badge">Cargando...</span>
+                    <span id="currentUserID" class="opacity-50 font-mono"></span>
                 </div>
                 <span id="liveClock"></span>
             </div>
@@ -64,6 +84,7 @@
                 <nav class="flex gap-10">
                     <button onclick="window.showTab('nueva')" id="tab-nueva" class="tab-btn py-5 active text-xs uppercase tracking-wider">Nueva Guía</button>
                     <button onclick="window.showTab('directorio')" id="tab-directorio" class="tab-btn py-5 text-xs uppercase tracking-wider hidden admin-only">Directorio</button>
+                    <button onclick="window.showTab('usuarios')" id="tab-usuarios" class="tab-btn py-5 text-xs uppercase tracking-wider hidden admin-only">Usuarios</button>
                     <button onclick="window.showTab('historial')" id="tab-historial" class="tab-btn py-5 text-xs uppercase tracking-wider">Historial</button>
                 </nav>
             </div>
@@ -75,7 +96,7 @@
                 <div class="bg-white rounded-2xl shadow-sm border p-8">
                     <div class="flex justify-between items-center mb-8">
                         <h2 class="text-xl font-black text-slate-800 uppercase italic">Formulario de Remisión</h2>
-                        <div class="text-xs font-mono font-bold bg-blue-50 text-cnt px-4 py-2 rounded-lg border border-blue-100" id="nextGuiaID">Cargando ID...</div>
+                        <div class="text-xs font-mono font-bold bg-blue-50 text-cnt px-4 py-2 rounded-lg border border-blue-100" id="nextGuiaID">CNT-1000</div>
                     </div>
                     
                     <form id="guiaForm" class="grid grid-cols-1 md:grid-cols-2 gap-10">
@@ -148,6 +169,26 @@
                 </div>
             </div>
 
+            <!-- VISTA: USUARIOS (Solo Admin) -->
+            <div id="view-usuarios" class="hidden max-w-5xl mx-auto space-y-6">
+                <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
+                    <div class="p-6 border-b">
+                        <h2 class="font-black text-slate-800 uppercase text-sm">Gestión de Usuarios y Permisos</h2>
+                    </div>
+                    <table class="w-full text-sm">
+                        <thead class="bg-slate-50 text-slate-500 uppercase text-[10px] font-black">
+                            <tr>
+                                <th class="p-4 text-left">UID / Identificador</th>
+                                <th class="p-4 text-left">Nombre</th>
+                                <th class="p-4 text-left">Rol Actual</th>
+                                <th class="p-4 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lista-usuarios" class="divide-y"></tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- VISTA: HISTORIAL -->
             <div id="view-historial" class="hidden max-w-5xl mx-auto space-y-6">
                 <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
@@ -163,54 +204,75 @@
 
         <!-- MODAL PREVIEW -->
         <div id="previewModal" class="fixed inset-0 bg-slate-900/90 z-50 hidden flex items-center justify-center p-4 overflow-y-auto no-print">
-            <div class="bg-white p-4 rounded-sm shadow-2xl max-w-5xl w-full">
-                <div class="flex justify-between mb-4 border-b pb-4">
-                    <h2 class="font-bold">VISTA PREVIA DE IMPRESIÓN</h2>
-                    <div class="flex gap-2">
-                        <button onclick="window.confirmarImpresion()" class="bg-blue-600 text-white px-6 py-2 rounded font-bold">IMPRIMIR</button>
-                        <button onclick="window.cerrarModal()" class="bg-gray-200 px-6 py-2 rounded">CANCELAR</button>
+            <div class="bg-white p-6 rounded-lg shadow-2xl max-w-5xl w-full">
+                <div class="flex justify-between items-center mb-6 border-b pb-4 no-print">
+                    <div>
+                        <h2 class="font-black text-slate-800 text-lg uppercase">Previsualización de Documento</h2>
+                        <p class="text-xs text-slate-500 italic">Verifique los datos antes de imprimir y guardar.</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="window.confirmarImpresion()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg transition flex items-center gap-2">
+                            <i class="fas fa-print"></i> CONFIRMAR E IMPRIMIR
+                        </button>
+                        <button onclick="window.cerrarModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold transition flex items-center gap-2">
+                            <i class="fas fa-edit"></i> EDITAR DATOS
+                        </button>
                     </div>
                 </div>
-                <div id="docPrint" class="guia-documento">
+                
+                <!-- Área de impresión -->
+                <div id="docPrint" class="guia-documento shadow-inner">
                     <div class="flex justify-between items-center mb-8 border-b-2 border-black pb-4">
                          <div class="bg-cnt text-white px-4 py-2 text-2xl font-black italic">CNT</div>
                          <div class="text-right">
                              <p class="text-xl font-bold" id="p-id">ID: 0000</p>
-                             <p class="text-xs" id="p-fecha"></p>
+                             <p class="text-[10px] font-mono" id="p-fecha"></p>
                          </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-8 text-xs uppercase mb-8">
-                        <div class="border p-4">
-                            <p class="font-bold border-b mb-2">REMITENTE</p>
-                            <p id="p-o-nombre"></p>
+                    
+                    <div class="grid grid-cols-2 gap-8 text-[11px] uppercase mb-8">
+                        <div class="border border-black p-4 bg-gray-50/50">
+                            <p class="font-black border-b border-black mb-2 pb-1">REMITENTE (ORIGEN)</p>
+                            <p class="font-bold" id="p-o-nombre"></p>
                             <p id="p-o-ruc"></p>
                             <p id="p-o-ciudad"></p>
                         </div>
-                        <div class="border p-4">
-                            <p class="font-bold border-b mb-2">DESTINATARIO</p>
-                            <p id="p-d-nombre"></p>
+                        <div class="border border-black p-4 bg-gray-50/50">
+                            <p class="font-black border-b border-black mb-2 pb-1">DESTINATARIO (DESTINO)</p>
+                            <p class="font-bold" id="p-d-nombre"></p>
                             <p id="p-d-ruc"></p>
                             <p id="p-d-ciudad"></p>
-                            <p id="p-d-dir"></p>
+                            <p class="mt-1 normal-case italic" id="p-d-dir"></p>
                         </div>
                     </div>
-                    <table class="w-full border text-xs mb-20">
-                        <tr class="bg-gray-100">
-                            <th class="border p-2">CANT.</th>
-                            <th class="border p-2">TIPO</th>
-                            <th class="border p-2">DESCRIPCIÓN</th>
-                            <th class="border p-2">PESO</th>
-                        </tr>
-                        <tr class="h-20">
-                            <td class="border p-2 text-center" id="p-cant"></td>
-                            <td class="border p-2 text-center" id="p-tipo"></td>
-                            <td class="border p-2" id="p-desc"></td>
-                            <td class="border p-2 text-center" id="p-peso"></td>
-                        </tr>
+
+                    <table class="w-full border border-black text-[11px] mb-20">
+                        <thead class="bg-gray-100 uppercase font-black">
+                            <tr>
+                                <th class="border border-black p-2 w-16">CANT.</th>
+                                <th class="border border-black p-2 w-32">TIPO</th>
+                                <th class="border border-black p-2 text-left">DESCRIPCIÓN DE MERCANCÍA</th>
+                                <th class="border border-black p-2 w-24">PESO (KG)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="h-24">
+                                <td class="border border-black p-2 text-center font-bold text-lg" id="p-cant"></td>
+                                <td class="border border-black p-2 text-center" id="p-tipo"></td>
+                                <td class="border border-black p-2 align-top uppercase" id="p-desc"></td>
+                                <td class="border border-black p-2 text-center font-bold" id="p-peso"></td>
+                            </tr>
+                        </tbody>
                     </table>
-                    <div class="grid grid-cols-2 gap-20 text-center text-[10px] mt-20">
-                        <div class="border-t border-black pt-2">FIRMA DESPACHO</div>
-                        <div class="border-t border-black pt-2">FIRMA RECEPCIÓN</div>
+
+                    <div class="grid grid-cols-2 gap-24 text-center text-[9px] mt-24">
+                        <div class="flex flex-col items-center">
+                            <div class="w-48 border-t border-black pt-2 uppercase font-bold">ENTREGADO POR (FIRMA)</div>
+                            <p class="mt-1" id="p-firma-nombre"></p>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="w-48 border-t border-black pt-2 uppercase font-bold">RECIBIDO POR (FIRMA/SELLO)</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -220,22 +282,21 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, collection, addDoc, onSnapshot, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, addDoc, onSnapshot, deleteDoc, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = JSON.parse(__firebase_config);
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'cnt-v3-roles';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'cnt-logistics-v5';
 
-        let isAuthReady = false;
         let currentUser = null;
-        let userProfile = { role: 'user' };
+        let userProfile = { role: 'user', username: 'Usuario' };
         let CONTACTOS = [];
         let HISTORIAL = [];
+        let USUARIOS = [];
         let guiaTemporal = null;
 
-        // 1. AUTENTICACIÓN Y GESTIÓN DE ROLES
         const startApp = async () => {
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -244,7 +305,7 @@
                     await signInAnonymously(auth);
                 }
             } catch (e) {
-                document.getElementById('authStatus').innerText = "Reconectando...";
+                console.error("Auth Error", e);
                 setTimeout(startApp, 2000);
             }
         };
@@ -252,37 +313,41 @@
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
-                await cargarPerfilUsuario(user.uid);
-                isAuthReady = true;
+                document.getElementById('currentUserID').innerText = user.uid;
+                await syncUserProfile(user);
                 
-                document.getElementById('authStatus').innerText = "Sistema Listo";
+                document.getElementById('authStatus').innerText = "Acceso Concedido";
                 document.getElementById('loginBtn').disabled = false;
                 document.getElementById('loginBtn').classList.replace('bg-slate-400', 'bg-cnt');
                 document.getElementById('loginBtn').classList.remove('cursor-not-allowed');
                 
-                aplicarPermisos();
-                inicializarDatos();
+                inicializarSuscripciones();
             }
         });
 
-        async function cargarPerfilUsuario(uid) {
-            const userDocRef = doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info');
-            const docSnap = await getDoc(userDocRef);
+        async function syncUserProfile(user) {
+            const publicUserRef = doc(db, 'artifacts', appId, 'public', 'data', 'usuarios_lista', user.uid);
+            const userSnap = await getDoc(publicUserRef);
             
-            if (docSnap.exists()) {
-                userProfile = docSnap.data();
+            if (userSnap.exists()) {
+                userProfile = userSnap.data();
             } else {
-                // Si es el primer ingreso, se le puede asignar un rol (ej. admin si el ID es específico o simplemente user)
-                userProfile = { role: 'user', username: 'Usuario' };
-                await setDoc(userDocRef, userProfile);
+                userProfile = { 
+                    uid: user.uid,
+                    role: 'admin', // Primer usuario es admin
+                    username: 'Nuevo Usuario',
+                    lastLogin: serverTimestamp()
+                };
+                await setDoc(publicUserRef, userProfile);
             }
-            
+            updateUIByRole();
+        }
+
+        function updateUIByRole() {
             const badge = document.getElementById('userRoleDisplay');
             badge.innerText = userProfile.role;
             badge.className = `role-badge ${userProfile.role === 'admin' ? 'role-admin' : 'role-user'}`;
-        }
-
-        function aplicarPermisos() {
+            
             if (userProfile.role === 'admin') {
                 document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
             } else {
@@ -290,40 +355,43 @@
             }
         }
 
-        startApp();
+        function inicializarSuscripciones() {
+            if (!currentUser) return;
 
-        // 2. DATOS COMPARTIDOS
-        function inicializarDatos() {
-            if (!isAuthReady) return;
-
-            const pathContactos = collection(db, 'artifacts', appId, 'public', 'data', 'contactos');
-            const pathHistorial = collection(db, 'artifacts', appId, 'public', 'data', 'historial');
-
-            onSnapshot(pathContactos, (snap) => {
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'contactos'), (snap) => {
                 CONTACTOS = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 updateSelects();
                 renderDirectorio();
-            }, (err) => console.error("Error Contactos:", err));
+            });
 
-            onSnapshot(pathHistorial, (snap) => {
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'historial'), (snap) => {
                 HISTORIAL = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 HISTORIAL.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
                 renderHistorial();
                 updateNextID();
-            }, (err) => console.error("Error Historial:", err));
+            });
+
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'usuarios_lista'), (snap) => {
+                USUARIOS = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderUsuarios();
+            });
         }
 
-        // 3. LOGICA DE NEGOCIO
         window.login = () => {
             const userVal = document.getElementById('userInput').value;
-            if(!userVal) return alert("Ingrese un usuario");
+            if(!userVal) return;
+            if(userProfile.username === 'Nuevo Usuario') {
+                updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios_lista', currentUser.uid), {
+                    username: userVal
+                });
+                userProfile.username = userVal;
+            }
             document.getElementById('loginSection').classList.add('hidden');
             document.getElementById('appSection').classList.remove('hidden');
         };
 
         window.showTab = (tab) => {
-            if(tab === 'directorio' && userProfile.role !== 'admin') return;
-            ['nueva', 'directorio', 'historial'].forEach(t => {
+            ['nueva', 'directorio', 'historial', 'usuarios'].forEach(t => {
                 const view = document.getElementById('view-'+t);
                 const btn = document.getElementById('tab-'+t);
                 if(view) view.classList.add('hidden');
@@ -333,86 +401,87 @@
             document.getElementById('tab-'+tab).classList.add('active');
         };
 
-        window.guardarContacto = async () => {
-            if (!isAuthReady || userProfile.role !== 'admin') return;
-            const nombre = document.getElementById('dir-nombre').value.toUpperCase();
-            const ruc = document.getElementById('dir-ruc').value;
-            const ciudad = document.getElementById('dir-ciudad').value.toUpperCase();
-            
-            if(!nombre || !ruc) return alert("Faltan datos");
-
-            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'contactos'), {
-                nombre, ruc, ciudad, createdAt: serverTimestamp()
-            });
-            document.getElementById('dir-nombre').value = '';
-            document.getElementById('dir-ruc').value = '';
-            document.getElementById('dir-ciudad').value = '';
-        };
-
-        window.eliminarContacto = async (id) => {
-            if (userProfile.role !== 'admin') return;
-            if(!confirm("¿Eliminar este contacto?")) return;
-            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'contactos', id));
-        };
-
         window.prepararGuia = () => {
             const id = document.getElementById('nextGuiaID').innerText;
+            const oNombre = document.getElementById('o-nombre').value;
+            const dNombre = document.getElementById('d-nombre').value;
+            
+            if(!oNombre || !dNombre) {
+                alert("Por favor complete remitente y destinatario.");
+                return;
+            }
+
             guiaTemporal = {
                 guiaId: id,
                 fecha: new Date().toLocaleString(),
-                usuario: currentUser.uid,
+                usuarioUid: currentUser.uid,
+                usuarioNombre: userProfile.username,
                 origen: {
-                    nombre: document.getElementById('o-nombre').value,
+                    nombre: oNombre.toUpperCase(),
                     ruc: document.getElementById('o-ruc').value,
-                    ciudad: document.getElementById('o-ciudad').value
+                    ciudad: document.getElementById('o-ciudad').value.toUpperCase()
                 },
                 destino: {
-                    nombre: document.getElementById('d-nombre').value,
+                    nombre: dNombre.toUpperCase(),
                     ruc: document.getElementById('d-ruc').value,
-                    ciudad: document.getElementById('d-ciudad').value,
-                    dir: document.getElementById('d-dir').value
+                    ciudad: document.getElementById('d-ciudad').value.toUpperCase(),
+                    dir: document.getElementById('d-dir').value.toUpperCase()
                 },
                 carga: {
-                    desc: document.getElementById('c-desc').value,
+                    desc: document.getElementById('c-desc').value.toUpperCase(),
                     cant: document.getElementById('c-cant').value,
                     peso: document.getElementById('c-peso').value,
                     tipo: document.getElementById('c-tipo').value
                 }
             };
             
-            if(!guiaTemporal.origen.nombre || !guiaTemporal.destino.nombre) return alert("Complete los datos básicos");
-            
+            // Asignar al Preview
             document.getElementById('p-id').innerText = guiaTemporal.guiaId;
             document.getElementById('p-fecha').innerText = guiaTemporal.fecha;
             document.getElementById('p-o-nombre').innerText = guiaTemporal.origen.nombre;
-            document.getElementById('p-o-ruc').innerText = "RUC: " + guiaTemporal.origen.ruc;
+            document.getElementById('p-o-ruc').innerText = "RUC: " + (guiaTemporal.origen.ruc || "N/A");
             document.getElementById('p-o-ciudad').innerText = guiaTemporal.origen.ciudad;
             document.getElementById('p-d-nombre').innerText = guiaTemporal.destino.nombre;
-            document.getElementById('p-d-ruc').innerText = "RUC: " + guiaTemporal.destino.ruc;
+            document.getElementById('p-d-ruc').innerText = "RUC: " + (guiaTemporal.destino.ruc || "N/A");
             document.getElementById('p-d-ciudad').innerText = guiaTemporal.destino.ciudad;
-            document.getElementById('p-d-dir').innerText = "DIR: " + guiaTemporal.destino.dir;
+            document.getElementById('p-d-dir').innerText = "DIRECCIÓN: " + (guiaTemporal.destino.dir || "CENTRO DE OPERACIONES");
             document.getElementById('p-cant').innerText = guiaTemporal.carga.cant;
             document.getElementById('p-tipo').innerText = guiaTemporal.carga.tipo;
-            document.getElementById('p-desc').innerText = guiaTemporal.carga.desc;
-            document.getElementById('p-peso').innerText = guiaTemporal.carga.peso + " KG";
+            document.getElementById('p-desc').innerText = guiaTemporal.carga.desc || "SIN DESCRIPCIÓN ADICIONAL";
+            document.getElementById('p-peso').innerText = guiaTemporal.carga.peso || "0";
+            document.getElementById('p-firma-nombre').innerText = userProfile.username.toUpperCase();
             
             document.getElementById('previewModal').classList.remove('hidden');
         };
 
         window.confirmarImpresion = async () => {
+            if (!guiaTemporal) return;
+            
+            // 1. Imprimir
             window.print();
-            if (isAuthReady && guiaTemporal) {
+            
+            // 2. Guardar en DB
+            try {
                 await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'historial'), {
                     ...guiaTemporal,
                     createdAt: serverTimestamp()
                 });
-                window.cerrarModal();
+                
+                // 3. Limpiar y Preparar para nueva guía
                 document.getElementById('guiaForm').reset();
-                window.showTab('historial');
+                document.getElementById('sel-remitente').value = "";
+                document.getElementById('sel-destinatario').value = "";
+                
+                window.cerrarModal();
+                guiaTemporal = null;
+            } catch (error) {
+                console.error("Error al guardar:", error);
             }
         };
 
-        window.cerrarModal = () => document.getElementById('previewModal').classList.add('hidden');
+        window.cerrarModal = () => {
+            document.getElementById('previewModal').classList.add('hidden');
+        };
 
         window.autoFill = (tipo) => {
             const id = document.getElementById(`sel-${tipo}`).value;
@@ -427,40 +496,64 @@
         function updateSelects() {
             const s1 = document.getElementById('sel-remitente');
             const s2 = document.getElementById('sel-destinatario');
-            let h = '<option value="">-- Seleccionar --</option>';
-            CONTACTOS.forEach(c => h += `<option value="${c.id}">${c.nombre}</option>`);
-            s1.innerHTML = h; s2.innerHTML = h;
+            let h = '<option value="">-- Buscar en Directorio --</option>';
+            CONTACTOS.forEach(c => h += `<option value="${c.id}">${c.nombre} (${c.ciudad})</option>`);
+            if(s1) s1.innerHTML = h; 
+            if(s2) s2.innerHTML = h;
         }
+
+        function updateNextID() {
+            const next = 1000 + HISTORIAL.length;
+            const el = document.getElementById('nextGuiaID');
+            if(el) el.innerText = `CNT-${next}`;
+        }
+
+        window.guardarContacto = async () => {
+            const nombre = document.getElementById('dir-nombre').value.toUpperCase();
+            const ruc = document.getElementById('dir-ruc').value;
+            const ciudad = document.getElementById('dir-ciudad').value.toUpperCase();
+            if(!nombre) return;
+            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'contactos'), { nombre, ruc, ciudad });
+            document.getElementById('dir-nombre').value = '';
+            document.getElementById('dir-ruc').value = '';
+            document.getElementById('dir-ciudad').value = '';
+        };
 
         function renderDirectorio() {
             const b = document.getElementById('lista-contactos');
+            if(!b) return;
             b.innerHTML = CONTACTOS.map(c => `
                 <tr>
-                    <td class="p-4 font-bold">${c.nombre}</td>
-                    <td class="p-4">${c.ciudad}</td>
+                    <td class="p-4 font-bold uppercase">${c.nombre}</td>
+                    <td class="p-4 uppercase">${c.ciudad}</td>
                     <td class="p-4 font-mono">${c.ruc}</td>
                     <td class="p-4 text-center">
-                        ${userProfile.role === 'admin' ? `<button onclick="window.eliminarContacto('${c.id}')" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>` : '-'}
+                        <button onclick="window.eliminarContacto('${c.id}')" class="text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button>
                     </td>
                 </tr>
             `).join('');
         }
 
+        window.eliminarContacto = async (id) => {
+            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'contactos', id));
+        };
+
         function renderHistorial() {
             const b = document.getElementById('lista-historial');
+            if(!b) return;
             b.innerHTML = HISTORIAL.map(h => `
                 <tr class="hover:bg-slate-50">
                     <td class="p-4 font-mono text-cnt font-bold">${h.guiaId}</td>
                     <td class="p-4 text-xs">${h.fecha}</td>
-                    <td class="p-4 font-semibold">${h.destino.nombre}</td>
+                    <td class="p-4 font-semibold uppercase">${h.destino.nombre}</td>
                     <td class="p-4 text-center">
-                        <button onclick="window.verHistorial('${h.id}')" class="bg-slate-100 px-3 py-1 rounded text-[10px] font-bold">RE-IMPRIMIR</button>
+                        <button onclick="window.reimprimir('${h.id}')" class="bg-slate-100 hover:bg-slate-200 px-3 py-1 rounded text-[10px] font-bold">VER / IMPRIMIR</button>
                     </td>
                 </tr>
             `).join('');
         }
 
-        window.verHistorial = (id) => {
+        window.reimprimir = (id) => {
             const h = HISTORIAL.find(x => x.id === id);
             if(!h) return;
             guiaTemporal = h;
@@ -472,21 +565,42 @@
             document.getElementById('p-d-nombre').innerText = h.destino.nombre;
             document.getElementById('p-d-ruc').innerText = "RUC: " + h.destino.ruc;
             document.getElementById('p-d-ciudad').innerText = h.destino.ciudad;
-            document.getElementById('p-d-dir').innerText = "DIR: " + h.destino.dir;
+            document.getElementById('p-d-dir').innerText = "DIRECCIÓN: " + h.destino.dir;
             document.getElementById('p-cant').innerText = h.carga.cant;
             document.getElementById('p-tipo').innerText = h.carga.tipo;
             document.getElementById('p-desc').innerText = h.carga.desc;
-            document.getElementById('p-peso').innerText = h.carga.peso + " KG";
+            document.getElementById('p-peso').innerText = h.carga.peso;
+            document.getElementById('p-firma-nombre').innerText = h.usuarioNombre ? h.usuarioNombre.toUpperCase() : "USUARIO";
             document.getElementById('previewModal').classList.remove('hidden');
         };
 
-        function updateNextID() {
-            const next = 1000 + HISTORIAL.length;
-            document.getElementById('nextGuiaID').innerText = `CNT-${next}`;
+        function renderUsuarios() {
+            const b = document.getElementById('lista-usuarios');
+            if(!b) return;
+            b.innerHTML = USUARIOS.map(u => `
+                <tr>
+                    <td class="p-4 font-mono text-[10px] opacity-60">${u.id}</td>
+                    <td class="p-4 font-bold uppercase">${u.username || 'S/N'}</td>
+                    <td class="p-4"><span class="role-badge ${u.role === 'admin' ? 'role-admin' : 'role-user'}">${u.role}</span></td>
+                    <td class="p-4 text-center">
+                        <select onchange="window.cambiarRol('${u.id}', this.value)" class="text-xs p-1 border rounded">
+                            <option value="user" ${u.role === 'user' ? 'selected' : ''}>Usuario</option>
+                            <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
+                        </select>
+                    </td>
+                </tr>
+            `).join('');
         }
 
+        window.cambiarRol = async (uid, nuevoRol) => {
+            if(uid === currentUser.uid) return;
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios_lista', uid), { role: nuevoRol });
+        };
+
+        startApp();
         setInterval(() => {
-            document.getElementById('liveClock').innerText = new Date().toLocaleString();
+            const el = document.getElementById('liveClock');
+            if(el) el.innerText = new Date().toLocaleString();
         }, 1000);
     </script>
 </body>
