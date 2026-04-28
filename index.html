@@ -20,6 +20,7 @@
             margin: 0 auto;
             color: black;
             box-sizing: border-box;
+            position: relative;
         }
         .tab-btn.active { border-bottom: 3px solid #0055a4; color: #0055a4; font-weight: 800; }
         .role-badge { font-size: 10px; padding: 2px 8px; border-radius: 99px; text-transform: uppercase; font-weight: bold; }
@@ -27,11 +28,9 @@
         .role-user { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
         
         @media print {
-            /* Ocultar todo excepto el documento */
             body * { visibility: hidden; }
             .no-print { display: none !important; }
             #previewModal, #previewModal *, #docPrint, #docPrint * { visibility: visible; }
-            
             #previewModal {
                 position: absolute !important;
                 left: 0 !important;
@@ -40,52 +39,46 @@
                 margin: 0 !important;
                 padding: 0 !important;
                 background: white !important;
-                overflow: visible !important;
+                display: block !important;
             }
-            
             .guia-documento {
                 position: absolute !important;
                 left: 0 !important;
                 top: 0 !important;
                 border: none !important;
-                box-shadow: none !important;
                 width: 100% !important;
-                margin: 0 !important;
             }
-            
-            /* Ajustes para navegadores modernos */
-            @page {
-                size: auto;
-                margin: 0mm;
-            }
+            @page { size: auto; margin: 10mm; }
         }
     </style>
 </head>
 <body>
 
-    <!-- ACCESO -->
+    <!-- PANTALLA DE ACCESO -->
     <div id="loginSection" class="min-h-screen flex items-center justify-center bg-slate-900">
         <div class="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md text-center">
             <div class="mb-8">
                 <div class="inline-block bg-cnt text-white px-6 py-2 rounded text-4xl font-black italic mb-2">CNT</div>
                 <h1 class="text-xl font-bold text-gray-800">Logística y Distribución</h1>
+                <p class="text-xs text-slate-400 mt-2">Identifíquese para acceder al sistema</p>
             </div>
-            <div id="authStatus" class="mb-4 text-sm font-bold text-blue-600 animate-pulse">Conectando...</div>
+            <div id="authStatus" class="mb-4 text-sm font-bold text-blue-600">Iniciando conexión segura...</div>
             <div class="space-y-4">
-                <input type="text" id="userInput" placeholder="Su Nombre para el Sistema" class="w-full p-4 border rounded-xl outline-none focus:ring-2 ring-blue-500">
+                <input type="text" id="userInput" placeholder="Nombre completo del Operador" class="w-full p-4 border rounded-xl outline-none focus:ring-2 ring-blue-500">
                 <button onclick="window.login()" id="loginBtn" disabled class="w-full bg-slate-400 text-white py-4 rounded-xl font-bold transition shadow-lg cursor-not-allowed">
                     INGRESAR AL PORTAL
                 </button>
             </div>
+            <p class="mt-6 text-[10px] text-slate-400 uppercase tracking-widest">Acceso Restringido - Personal Autorizado</p>
         </div>
     </div>
 
-    <!-- APP PRINCIPAL -->
+    <!-- APLICACIÓN PRINCIPAL -->
     <div id="appSection" class="hidden min-h-screen flex flex-col">
         <header class="bg-white shadow-sm no-print">
             <div class="bg-slate-800 text-white text-[10px] px-6 py-1 flex justify-between uppercase tracking-widest font-bold">
                 <div class="flex items-center gap-4">
-                    <span>CNT EP - SISTEMA DE LOGÍSTICA</span>
+                    <span>CNT EP - SISTEMA CENTRALIZADO</span>
                     <span id="userRoleDisplay" class="role-badge">Cargando...</span>
                     <span id="userNameDisplay" class="opacity-70"></span>
                 </div>
@@ -96,51 +89,53 @@
                 <nav class="flex gap-10">
                     <button onclick="window.showTab('nueva')" id="tab-nueva" class="tab-btn py-5 active text-xs uppercase tracking-wider">Nueva Guía</button>
                     <button onclick="window.showTab('directorio')" id="tab-directorio" class="tab-btn py-5 text-xs uppercase tracking-wider">Directorio</button>
-                    <button onclick="window.showTab('usuarios')" id="tab-usuarios" class="tab-btn py-5 text-xs uppercase tracking-wider hidden admin-only">Usuarios</button>
                     <button onclick="window.showTab('historial')" id="tab-historial" class="tab-btn py-5 text-xs uppercase tracking-wider">Historial</button>
+                    <button onclick="window.showTab('usuarios')" id="tab-usuarios" class="tab-btn py-5 text-xs uppercase tracking-wider hidden admin-only">Gestión de Usuarios</button>
                 </nav>
+                <div class="ml-auto flex gap-4">
+                    <button onclick="location.reload()" class="text-slate-400 hover:text-red-500 text-sm font-bold uppercase transition">Salir</button>
+                </div>
             </div>
         </header>
 
-        <main class="p-6 no-print flex-grow">
+        <main class="p-6 no-print flex-grow overflow-y-auto">
             <!-- VISTA: FORMULARIO -->
             <div id="view-nueva" class="max-w-6xl mx-auto">
                 <div class="bg-white rounded-2xl shadow-sm border p-8">
                     <div class="flex justify-between items-center mb-8">
-                        <h2 class="text-xl font-black text-slate-800 uppercase italic">Generar Guía de Remisión</h2>
-                        <div class="text-xs font-mono font-bold bg-blue-50 text-cnt px-4 py-2 rounded-lg border border-blue-100" id="nextGuiaID">ID: ---</div>
+                        <h2 class="text-xl font-black text-slate-800 uppercase italic">Emitir Guía de Remisión</h2>
+                        <div class="text-xs font-mono font-bold bg-blue-50 text-cnt px-4 py-2 rounded-lg border border-blue-100" id="nextGuiaID">Cargando ID...</div>
                     </div>
                     
                     <form id="guiaForm" class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <!-- ORIGEN -->
+                        <!-- Origen -->
                         <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4">
                             <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Punto de Origen</label>
-                            <select id="sel-remitente" onchange="window.autoFill('remitente')" class="w-full p-3 bg-white border rounded-xl text-sm font-semibold"></select>
+                            <select id="sel-remitente" onchange="window.autoFill('remitente')" class="w-full p-3 bg-white border rounded-xl text-sm font-semibold shadow-sm focus:ring-2 ring-blue-500 outline-none"></select>
                             <input type="text" id="o-nombre" placeholder="Nombre Remitente" class="w-full p-3 border rounded-xl text-sm uppercase font-bold">
                             <div class="grid grid-cols-2 gap-3">
                                 <input type="text" id="o-ruc" placeholder="RUC / CI" class="p-3 border rounded-xl text-sm">
-                                <input type="text" id="o-tel" placeholder="Teléfono Contacto" class="p-3 border rounded-xl text-sm">
+                                <input type="text" id="o-tel" placeholder="Teléfono" class="p-3 border rounded-xl text-sm">
                             </div>
                             <input type="text" id="o-ciudad" placeholder="Ciudad" class="w-full p-3 border rounded-xl text-sm uppercase">
-                            <input type="text" id="o-dir" placeholder="Dirección de Origen" class="w-full p-3 border rounded-xl text-sm uppercase">
+                            <input type="text" id="o-dir" placeholder="Dirección Exacta" class="w-full p-3 border rounded-xl text-sm uppercase">
                         </div>
 
-                        <!-- DESTINO -->
+                        <!-- Destino -->
                         <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4">
                             <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Punto de Destino</label>
-                            <select id="sel-destinatario" onchange="window.autoFill('destinatario')" class="w-full p-3 bg-white border rounded-xl text-sm font-semibold"></select>
+                            <select id="sel-destinatario" onchange="window.autoFill('destinatario')" class="w-full p-3 bg-white border rounded-xl text-sm font-semibold shadow-sm focus:ring-2 ring-blue-500 outline-none"></select>
                             <input type="text" id="d-nombre" placeholder="Nombre Destinatario" class="w-full p-3 border rounded-xl text-sm uppercase font-bold">
                             <div class="grid grid-cols-2 gap-3">
                                 <input type="text" id="d-ruc" placeholder="RUC / CI" class="p-3 border rounded-xl text-sm">
-                                <input type="text" id="d-tel" placeholder="Teléfono Contacto" class="p-3 border rounded-xl text-sm">
+                                <input type="text" id="d-tel" placeholder="Teléfono" class="p-3 border rounded-xl text-sm">
                             </div>
                             <input type="text" id="d-ciudad" placeholder="Ciudad" class="w-full p-3 border rounded-xl text-sm uppercase">
-                            <input type="text" id="d-dir" placeholder="Dirección de Destino" class="w-full p-3 border rounded-xl text-sm uppercase">
+                            <input type="text" id="d-dir" placeholder="Dirección Exacta" class="w-full p-3 border rounded-xl text-sm uppercase">
                         </div>
 
-                        <!-- CARGA -->
-                        <div class="md:col-span-2 bg-slate-800 p-6 rounded-2xl text-white">
-                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 block">Detalle de la Carga</label>
+                        <!-- Carga -->
+                        <div class="md:col-span-2 bg-slate-800 p-6 rounded-2xl text-white shadow-xl">
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[9px] uppercase font-bold text-slate-400">Cantidad</span>
@@ -153,23 +148,22 @@
                                         <option>VALIJA</option>
                                         <option>PAQUETERÍA</option>
                                         <option>TECNOLOGÍA</option>
-                                        <option>MOBILIARIO</option>
                                     </select>
                                 </div>
                                 <div class="flex flex-col gap-1 md:col-span-1">
                                     <span class="text-[9px] uppercase font-bold text-slate-400">Descripción</span>
-                                    <input type="text" id="c-desc" placeholder="¿Qué se envía?" class="p-3 border-none rounded-xl text-sm uppercase text-slate-900">
+                                    <input type="text" id="c-desc" placeholder="Detalle de contenido" class="p-3 border-none rounded-xl text-sm uppercase text-slate-900">
                                 </div>
                                 <div class="flex flex-col gap-1">
-                                    <span class="text-[9px] uppercase font-bold text-slate-400">Peso (Aprox)</span>
-                                    <input type="text" id="c-peso" placeholder="Kg" class="p-3 border-none rounded-xl text-sm text-slate-900">
+                                    <span class="text-[9px] uppercase font-bold text-slate-400">Peso (Kg)</span>
+                                    <input type="text" id="c-peso" placeholder="Peso aprox" class="p-3 border-none rounded-xl text-sm text-slate-900">
                                 </div>
                             </div>
                         </div>
 
-                        <div class="md:col-span-2 flex justify-end gap-4">
-                            <button type="button" onclick="window.prepararGuia()" class="bg-cnt text-white px-12 py-4 rounded-2xl font-bold shadow-xl hover:bg-blue-700 transition transform hover:scale-105">
-                                <i class="fas fa-eye mr-2"></i> VISTA PREVIA
+                        <div class="md:col-span-2 flex justify-end">
+                            <button type="button" onclick="window.prepararGuia()" class="bg-cnt text-white px-12 py-4 rounded-2xl font-bold shadow-xl hover:bg-blue-700 transition transform hover:-translate-y-1">
+                                <i class="fas fa-eye mr-2"></i> GENERAR VISTA PREVIA
                             </button>
                         </div>
                     </form>
@@ -178,45 +172,65 @@
 
             <!-- VISTA: DIRECTORIO -->
             <div id="view-directorio" class="hidden max-w-5xl mx-auto space-y-6">
-                <div class="bg-white p-6 rounded-2xl border">
-                    <h3 class="font-bold mb-4 uppercase text-sm">Registrar Contacto Frecuente</h3>
+                <div class="bg-white p-8 rounded-2xl border shadow-sm">
+                    <h3 class="font-black mb-6 uppercase text-sm italic text-cnt">Agregar Nuevo Contacto Frecuente</h3>
                     <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                        <input type="text" id="dir-nombre" placeholder="Nombre" class="p-3 border rounded-xl text-sm uppercase">
-                        <input type="text" id="dir-ruc" placeholder="RUC" class="p-3 border rounded-xl text-sm">
+                        <input type="text" id="dir-nombre" placeholder="Nombre Entidad" class="p-3 border rounded-xl text-sm uppercase">
+                        <input type="text" id="dir-ruc" placeholder="RUC / CI" class="p-3 border rounded-xl text-sm">
                         <input type="text" id="dir-tel" placeholder="Teléfono" class="p-3 border rounded-xl text-sm">
                         <input type="text" id="dir-ciudad" placeholder="Ciudad" class="p-3 border rounded-xl text-sm uppercase">
-                        <button onclick="window.guardarContacto()" class="bg-emerald-600 text-white font-bold rounded-xl py-3 hover:bg-emerald-700">GUARDAR</button>
+                        <button onclick="window.guardarContacto()" class="bg-emerald-600 text-white font-bold rounded-xl py-3 hover:bg-emerald-700 transition">GUARDAR</button>
                     </div>
                 </div>
                 <div id="lista-contactos" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
             </div>
 
-            <!-- VISTA: USUARIOS (Admin Only) -->
-            <div id="view-usuarios" class="hidden max-w-5xl mx-auto">
+            <!-- VISTA: USUARIOS (Solo Admin) -->
+            <div id="view-usuarios" class="hidden max-w-5xl mx-auto space-y-6">
                 <div class="bg-white rounded-2xl border shadow-sm overflow-hidden">
-                    <div class="p-6 bg-slate-50 border-b">
-                        <h2 class="font-black text-slate-800 uppercase text-sm">Gestión de Personal y Accesos</h2>
+                    <div class="p-6 border-b bg-slate-50 flex justify-between items-center">
+                        <div>
+                            <h2 class="font-black text-slate-800 uppercase italic">Control de Personal</h2>
+                            <p class="text-xs text-slate-500">Gestione los accesos y niveles de privilegio</p>
+                        </div>
+                        <div class="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                            <i class="fas fa-users mr-1"></i> <span id="userCount">0</span> Operadores
+                        </div>
                     </div>
                     <table class="w-full text-sm">
                         <thead class="bg-slate-900 text-white uppercase text-[10px]">
                             <tr>
-                                <th class="p-4 text-left">Usuario</th>
-                                <th class="p-4 text-left">UID</th>
-                                <th class="p-4 text-left">Rol Asignado</th>
+                                <th class="p-4 text-left">Nombre del Operador</th>
+                                <th class="p-4 text-left">UID de Sistema</th>
+                                <th class="p-4 text-left">Nivel de Acceso</th>
                                 <th class="p-4 text-center">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody id="lista-usuarios" class="divide-y"></tbody>
+                        <tbody id="lista-usuarios" class="divide-y">
+                            <!-- Los usuarios se cargan aquí -->
+                        </tbody>
                     </table>
+                </div>
+                <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 text-blue-800 text-[11px]">
+                    <i class="fas fa-info-circle mr-2"></i> Los usuarios nuevos aparecen automáticamente al ingresar por primera vez. Solo un Administrador puede cambiar el rol de un usuario.
                 </div>
             </div>
 
             <!-- VISTA: HISTORIAL -->
             <div id="view-historial" class="hidden max-w-5xl mx-auto">
-                <div class="bg-white rounded-2xl border overflow-hidden">
+                <div class="bg-white rounded-2xl border shadow-sm overflow-hidden">
+                    <div class="p-6 border-b bg-slate-50">
+                        <h2 class="font-black text-slate-800 uppercase italic">Registro Histórico de Guías</h2>
+                    </div>
                     <table class="w-full text-sm text-left">
                         <thead class="bg-slate-900 text-white uppercase text-[10px]">
-                            <tr><th class="p-4">ID Guía</th><th class="p-4">Fecha Emisión</th><th class="p-4">Destino Final</th><th class="p-4 text-center">Acción</th></tr>
+                            <tr>
+                                <th class="p-4">Nro. Guía</th>
+                                <th class="p-4">Fecha Emisión</th>
+                                <th class="p-4">Destinatario</th>
+                                <th class="p-4">Operador</th>
+                                <th class="p-4 text-center">Acciones</th>
+                            </tr>
                         </thead>
                         <tbody id="lista-historial" class="divide-y"></tbody>
                     </table>
@@ -226,48 +240,44 @@
 
         <!-- MODAL PREVIEW -->
         <div id="previewModal" class="fixed inset-0 bg-slate-900/90 z-50 hidden flex items-start justify-center p-4 overflow-y-auto">
-            <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full my-8 flex flex-col no-print-container">
+            <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full my-8 flex flex-col animate-in fade-in zoom-in duration-300">
                 <div class="p-6 border-b flex justify-between items-center bg-slate-50 rounded-t-xl no-print">
                     <div>
-                        <h2 class="font-black text-slate-800 uppercase">Confirmación de Guía</h2>
-                        <p class="text-xs text-slate-500">Verifique los teléfonos y direcciones antes de emitir</p>
+                        <h2 class="font-black text-slate-800 uppercase tracking-tighter text-xl">Documento Listo</h2>
+                        <p class="text-xs text-slate-500 uppercase font-bold">Verifique la información antes de procesar</p>
                     </div>
                     <div class="flex gap-3">
-                        <button onclick="window.cerrarModal()" class="bg-slate-200 text-slate-700 px-6 py-2 rounded-lg font-bold hover:bg-slate-300">
-                            CORREGIR DATOS
-                        </button>
-                        <button onclick="window.confirmarEImprimir()" class="bg-cnt text-white px-8 py-2 rounded-lg font-bold shadow-lg hover:bg-blue-700">
-                            IMPRIMIR Y EMITIR
-                        </button>
+                        <button onclick="window.cerrarModal()" class="bg-slate-200 text-slate-700 px-6 py-2 rounded-lg font-bold hover:bg-slate-300 transition">CORREGIR</button>
+                        <button onclick="window.confirmarEImprimir()" class="bg-cnt text-white px-8 py-2 rounded-lg font-bold shadow-lg hover:bg-blue-700 transition">ACEPTAR E IMPRIMIR</button>
                     </div>
                 </div>
                 
-                <div class="p-12 overflow-x-auto bg-white flex justify-center print-area">
-                    <div id="docPrint" class="guia-documento">
+                <div class="p-8 bg-slate-300 flex justify-center">
+                    <div id="docPrint" class="guia-documento shadow-2xl">
                         <div class="flex justify-between items-start mb-6 border-b-4 border-cnt pb-4">
                             <div class="bg-cnt text-white px-6 py-2 text-3xl font-black italic">CNT</div>
                             <div class="text-right">
                                 <p class="text-2xl font-black text-cnt" id="p-id">ID: ---</p>
-                                <p class="text-[10px] font-mono text-slate-500" id="p-fecha"></p>
+                                <p class="text-[10px] font-mono text-slate-500 uppercase" id="p-fecha"></p>
                             </div>
                         </div>
                         
                         <div class="grid grid-cols-2 gap-4 text-[11px] mb-6">
                             <div class="border border-black p-3">
-                                <p class="font-black bg-slate-100 p-1 mb-2 text-center">DATOS DEL REMITENTE</p>
+                                <p class="font-black bg-slate-100 p-1 mb-2 text-center uppercase border border-black">Remitente / Origen</p>
                                 <p class="font-bold text-sm" id="p-o-nombre"></p>
                                 <p id="p-o-ruc"></p>
                                 <p id="p-o-tel" class="font-bold"></p>
                                 <p id="p-o-ciudad"></p>
-                                <p class="mt-1 italic border-t border-dotted border-black pt-1" id="p-o-dir"></p>
+                                <p class="mt-2 italic border-t border-black pt-1" id="p-o-dir"></p>
                             </div>
                             <div class="border border-black p-3">
-                                <p class="font-black bg-slate-100 p-1 mb-2 text-center">DATOS DEL DESTINATARIO</p>
+                                <p class="font-black bg-slate-100 p-1 mb-2 text-center uppercase border border-black">Destinatario / Entrega</p>
                                 <p class="font-bold text-sm" id="p-d-nombre"></p>
                                 <p id="p-d-ruc"></p>
                                 <p id="p-d-tel" class="font-bold"></p>
                                 <p id="p-d-ciudad"></p>
-                                <p class="mt-1 italic border-t border-dotted border-black pt-1" id="p-d-dir"></p>
+                                <p class="mt-2 italic border-t border-black pt-1" id="p-d-dir"></p>
                             </div>
                         </div>
 
@@ -275,16 +285,16 @@
                             <thead class="bg-slate-100">
                                 <tr>
                                     <th class="border border-black p-2 w-16">CANT.</th>
-                                    <th class="border border-black p-2 w-32">TIPO CARGA</th>
-                                    <th class="border border-black p-2 text-left">DESCRIPCIÓN DE MERCADERÍA</th>
+                                    <th class="border border-black p-2 w-32">TIPO</th>
+                                    <th class="border border-black p-2 text-left">DESCRIPCIÓN DE CONTENIDO</th>
                                     <th class="border border-black p-2 w-20">PESO</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <tr class="h-28">
-                                    <td class="border border-black p-2 text-center font-bold text-xl" id="p-cant"></td>
+                            <tbody class="h-32">
+                                <tr>
+                                    <td class="border border-black p-2 text-center font-bold" id="p-cant"></td>
                                     <td class="border border-black p-2 text-center font-bold" id="p-tipo"></td>
-                                    <td class="border border-black p-2 align-top uppercase leading-tight" id="p-desc"></td>
+                                    <td class="border border-black p-2 align-top uppercase" id="p-desc"></td>
                                     <td class="border border-black p-2 text-center" id="p-peso"></td>
                                 </tr>
                             </tbody>
@@ -292,13 +302,17 @@
 
                         <div class="grid grid-cols-2 gap-16 text-center text-[9px] mt-24">
                             <div class="flex flex-col items-center">
-                                <div class="w-48 border-t border-black pt-2 uppercase font-bold">Responsable de Envío</div>
-                                <p class="mt-1 font-mono" id="p-operador-firma"></p>
+                                <div class="w-48 border-t border-black pt-2 uppercase font-black">Operador Autorizado</div>
+                                <p class="mt-1 font-bold" id="p-operador-firma"></p>
                             </div>
                             <div class="flex flex-col items-center">
-                                <div class="w-48 border-t border-black pt-2 uppercase font-bold">Firma de Recibido Conforme</div>
-                                <p class="mt-1">Fecha: ____/____/____ Hora: ____:____</p>
+                                <div class="w-48 border-t border-black pt-2 uppercase font-black">Firma de Conformidad</div>
+                                <p class="mt-1">Nro. Cédula: _______________________</p>
                             </div>
+                        </div>
+
+                        <div class="absolute bottom-4 left-0 right-0 text-center text-[7px] text-slate-400 uppercase tracking-widest font-bold">
+                            Este documento es para control interno de logística CNT EP
                         </div>
                     </div>
                 </div>
@@ -309,26 +323,32 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, collection, addDoc, onSnapshot, deleteDoc, serverTimestamp, updateDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, addDoc, onSnapshot, deleteDoc, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // FIREBASE BOOTSTRAP
         const firebaseConfig = JSON.parse(__firebase_config);
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'cnt-logistics-multi-role';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'cnt-logistics-core';
 
         let user = null;
         let profile = { role: 'user', username: 'Operador' };
         let contactos = [];
         let historial = [];
-        let usuarios = [];
         let guiaActual = null;
 
+        // AUTHENTICATION LOGIC
         const initAuth = async () => {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.error("Auth Fail:", err);
+                document.getElementById('authStatus').innerText = "Error de conexión. Reintente.";
             }
         };
 
@@ -339,67 +359,80 @@
                 const uSnap = await getDoc(uRef);
                 
                 if (!uSnap.exists()) {
-                    const allUsersSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'user_registry', 'config_tracker'));
-                    const isFirst = !allUsersSnap.exists();
+                    // Check if it's the very first user ever to make them admin
+                    const trackerRef = doc(db, 'artifacts', appId, 'public', 'data', 'system_config', 'status');
+                    const trackerSnap = await getDoc(trackerRef);
+                    const isFirst = !trackerSnap.exists();
                     
                     profile = { 
                         uid: u.uid, 
                         role: isFirst ? 'admin' : 'user', 
                         username: 'Nuevo Operador',
-                        lastSeen: serverTimestamp()
+                        lastLogin: serverTimestamp()
                     };
+                    
                     await setDoc(uRef, profile);
-                    if(isFirst) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'user_registry', 'config_tracker'), { initialized: true });
+                    if(isFirst) await setDoc(trackerRef, { initialized: true });
                 } else {
                     profile = uSnap.data();
-                    await updateDoc(uRef, { lastSeen: serverTimestamp() });
                 }
                 
-                document.getElementById('authStatus').innerText = "Sistema Listo";
+                document.getElementById('authStatus').innerText = "Sistema Listo ✔";
                 document.getElementById('loginBtn').disabled = false;
                 document.getElementById('loginBtn').classList.replace('bg-slate-400', 'bg-cnt');
                 document.getElementById('loginBtn').classList.remove('cursor-not-allowed');
                 
-                document.getElementById('userRoleDisplay').innerText = profile.role;
-                document.getElementById('userNameDisplay').innerText = profile.username;
-                
-                if(profile.role === 'admin') {
-                    document.querySelectorAll('.admin-only').forEach(e => e.classList.remove('hidden'));
-                }
-                
-                setupSubscriptions();
+                updateUIAccess();
+                startSync();
             }
         });
 
-        function setupSubscriptions() {
-            if(!user) return;
-
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'contacts'), (s) => {
-                contactos = s.docs.map(d => ({id: d.id, ...d.data()}));
-                updateSelects();
-                renderContacts();
-            }, (err) => console.error(err));
-
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'history'), (s) => {
-                historial = s.docs.map(d => ({id: d.id, ...d.data()}));
-                historial.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-                renderHistory();
-                updateNextID();
-            }, (err) => console.error(err));
-
+        function updateUIAccess() {
+            document.getElementById('userRoleDisplay').innerText = profile.role;
+            document.getElementById('userNameDisplay').innerText = profile.username;
+            
             if(profile.role === 'admin') {
-                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'user_registry'), (s) => {
-                    usuarios = s.docs.filter(d => d.id !== 'config_tracker').map(d => ({id: d.id, ...d.data()}));
-                    renderUsersTable();
-                }, (err) => console.error(err));
+                document.querySelectorAll('.admin-only').forEach(e => e.classList.remove('hidden'));
+            } else {
+                document.querySelectorAll('.admin-only').forEach(e => e.classList.add('hidden'));
             }
         }
 
+        // REAL-TIME SYNC
+        function startSync() {
+            if(!user) return;
+
+            // Contacts
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'contacts'), (s) => {
+                contactos = s.docs.map(d => ({id: d.id, ...d.data()}));
+                updateSelects();
+                renderContactsGrid();
+            }, (e) => console.error("Sync Contacts Error:", e));
+
+            // History
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'history'), (s) => {
+                historial = s.docs.map(d => ({id: d.id, ...d.data()}));
+                historial.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                renderHistoryTable();
+                updateCounter();
+            }, (e) => console.error("Sync History Error:", e));
+
+            // Users (Admins only)
+            if(profile.role === 'admin') {
+                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'user_registry'), (s) => {
+                    const users = s.docs.map(d => ({id: d.id, ...d.data()}));
+                    renderUsersControl(users);
+                });
+            }
+        }
+
+        // USER ACTIONS
         window.login = async () => {
-            const val = document.getElementById('userInput').value;
+            const val = document.getElementById('userInput').value.trim();
             if(val) {
                 profile.username = val;
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'user_registry', user.uid), { username: val });
+                const uRef = doc(db, 'artifacts', appId, 'public', 'data', 'user_registry', user.uid);
+                await updateDoc(uRef, { username: val, lastLogin: serverTimestamp() });
                 document.getElementById('userNameDisplay').innerText = val;
             }
             document.getElementById('loginSection').classList.add('hidden');
@@ -407,31 +440,75 @@
         };
 
         window.showTab = (t) => {
-            ['nueva', 'directorio', 'historial', 'usuarios'].forEach(id => {
-                const view = document.getElementById('view-'+id);
-                const btn = document.getElementById('tab-'+id);
-                if(view) view.classList.add('hidden');
+            ['nueva', 'directorio', 'historial', 'usuarios'].forEach(v => {
+                const el = document.getElementById('view-'+v);
+                const btn = document.getElementById('tab-'+v);
+                if(el) el.classList.add('hidden');
                 if(btn) btn.classList.remove('active');
             });
-            document.getElementById('view-'+t).classList.remove('hidden');
+            const targetView = document.getElementById('view-'+t);
+            if(targetView) targetView.classList.remove('hidden');
             document.getElementById('tab-'+t).classList.add('active');
         };
 
-        window.autoFill = (tipo) => {
-            const id = document.getElementById(`sel-${tipo}`).value;
+        window.updateUserRole = async (uid, newRole) => {
+            if(uid === user.uid && newRole === 'user') {
+                if(!confirm("¿Estás seguro de quitarte a ti mismo el permiso de Administrador? Perderás acceso a este panel.")) return;
+            }
+            try {
+                const uRef = doc(db, 'artifacts', appId, 'public', 'data', 'user_registry', uid);
+                await updateDoc(uRef, { role: newRole });
+                // If current user updated their own role, update local profile too
+                if(uid === user.uid) {
+                    profile.role = newRole;
+                    updateUIAccess();
+                }
+            } catch (err) {
+                console.error("Error updating role:", err);
+            }
+        };
+
+        window.eliminarUsuario = async (uid) => {
+            if(uid === user.uid) return alert("No puedes eliminar tu propia cuenta mientras estás en sesión.");
+            if(confirm("¿Seguro que desea revocar el acceso a este operador?")) {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'user_registry', uid));
+            }
+        };
+
+        window.autoFill = (mode) => {
+            const id = document.getElementById(`sel-${mode}`).value;
             const c = contactos.find(x => x.id === id);
             if(!c) return;
-            const pre = tipo === 'remitente' ? 'o-' : 'd-';
-            document.getElementById(pre+'nombre').value = c.nombre;
-            document.getElementById(pre+'ruc').value = c.ruc || "";
-            document.getElementById(pre+'tel').value = c.tel || "";
-            document.getElementById(pre+'ciudad').value = c.ciudad || "";
+            const prefix = mode === 'remitente' ? 'o-' : 'd-';
+            document.getElementById(prefix+'nombre').value = c.nombre;
+            document.getElementById(prefix+'ruc').value = c.ruc || "";
+            document.getElementById(prefix+'tel').value = c.tel || "";
+            document.getElementById(prefix+'ciudad').value = c.ciudad || "";
+        };
+
+        window.guardarContacto = async () => {
+            const data = {
+                nombre: document.getElementById('dir-nombre').value,
+                ruc: document.getElementById('dir-ruc').value,
+                tel: document.getElementById('dir-tel').value,
+                ciudad: document.getElementById('dir-ciudad').value,
+                createdAt: serverTimestamp()
+            };
+            if(!data.nombre) return alert("El nombre es obligatorio");
+            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'contacts'), data);
+            ['dir-nombre', 'dir-ruc', 'dir-tel', 'dir-ciudad'].forEach(i => document.getElementById(i).value = '');
+        };
+
+        window.borrarContacto = async (id) => {
+            if(confirm("¿Eliminar contacto del directorio?")) {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'contacts', id));
+            }
         };
 
         window.prepararGuia = () => {
-            const idText = document.getElementById('nextGuiaID').innerText;
-            const data = {
-                id: idText,
+            const idFull = document.getElementById('nextGuiaID').innerText.replace('ID: ', '');
+            guiaActual = {
+                id: idFull,
                 fecha: new Date().toLocaleString(),
                 origen: {
                     nombre: document.getElementById('o-nombre').value,
@@ -455,166 +532,159 @@
                 }
             };
 
-            if(!data.origen.nombre || !data.destino.nombre) return alert("Los nombres de origen y destino son obligatorios.");
-
-            guiaActual = data;
-            llenarDatosModal(data);
+            if(!guiaActual.origen.nombre || !guiaActual.destino.nombre) return alert("Los nombres de origen y destino son obligatorios.");
+            
+            // Populate Preview
+            document.getElementById('p-id').innerText = guiaActual.id;
+            document.getElementById('p-fecha').innerText = guiaActual.fecha;
+            document.getElementById('p-o-nombre').innerText = guiaActual.origen.nombre.toUpperCase();
+            document.getElementById('p-o-ruc').innerText = "RUC/CI: " + (guiaActual.origen.ruc || "N/A");
+            document.getElementById('p-o-tel').innerText = "TELF: " + (guiaActual.origen.tel || "N/A");
+            document.getElementById('p-o-ciudad').innerText = "CIUDAD: " + guiaActual.origen.ciudad.toUpperCase();
+            document.getElementById('p-o-dir').innerText = "DIR: " + guiaActual.origen.dir.toUpperCase();
+            
+            document.getElementById('p-d-nombre').innerText = guiaActual.destino.nombre.toUpperCase();
+            document.getElementById('p-d-ruc').innerText = "RUC/CI: " + (guiaActual.destino.ruc || "N/A");
+            document.getElementById('p-d-tel').innerText = "TELF: " + (guiaActual.destino.tel || "N/A");
+            document.getElementById('p-d-ciudad').innerText = "CIUDAD: " + guiaActual.destino.ciudad.toUpperCase();
+            document.getElementById('p-d-dir').innerText = "DIR: " + guiaActual.destino.dir.toUpperCase();
+            
+            document.getElementById('p-cant').innerText = guiaActual.carga.cant;
+            document.getElementById('p-tipo').innerText = guiaActual.carga.tipo;
+            document.getElementById('p-desc').innerText = (guiaActual.carga.desc || "SIN DESCRIPCIÓN").toUpperCase();
+            document.getElementById('p-peso').innerText = guiaActual.carga.peso + " KG";
+            document.getElementById('p-operador-firma').innerText = profile.username.toUpperCase();
+            
             document.getElementById('previewModal').classList.remove('hidden');
         };
 
-        function llenarDatosModal(data) {
-            document.getElementById('p-id').innerText = data.id;
-            document.getElementById('p-fecha').innerText = data.fecha;
-            document.getElementById('p-o-nombre').innerText = data.origen.nombre.toUpperCase();
-            document.getElementById('p-o-ruc').innerText = "RUC: " + (data.origen.ruc || "N/A");
-            document.getElementById('p-o-tel').innerText = "TEL: " + (data.origen.tel || "---");
-            document.getElementById('p-o-ciudad').innerText = data.origen.ciudad.toUpperCase();
-            document.getElementById('p-o-dir').innerText = "DIRECCIÓN: " + (data.origen.dir || "S/D").toUpperCase();
-            
-            document.getElementById('p-d-nombre').innerText = data.destino.nombre.toUpperCase();
-            document.getElementById('p-d-ruc').innerText = "RUC: " + (data.destino.ruc || "N/A");
-            document.getElementById('p-d-tel').innerText = "TEL: " + (data.destino.tel || "---");
-            document.getElementById('p-d-ciudad').innerText = data.destino.ciudad.toUpperCase();
-            document.getElementById('p-d-dir').innerText = "DIRECCIÓN: " + (data.destino.dir || "S/D").toUpperCase();
-            
-            document.getElementById('p-cant').innerText = data.carga.cant;
-            document.getElementById('p-tipo').innerText = data.carga.tipo;
-            document.getElementById('p-desc').innerText = data.carga.desc.toUpperCase() || "SIN DESCRIPCIÓN ADICIONAL";
-            document.getElementById('p-peso').innerText = (data.carga.peso || "0") + " KG";
-            document.getElementById('p-operador-firma').innerText = (data.operadorNombre || profile.username).toUpperCase();
-        }
-
         window.confirmarEImprimir = async () => {
             if(!guiaActual) return;
-            
-            // 1. Ejecutar diálogo de impresión
             window.print();
             
-            // 2. Guardar en base de datos si es una guía nueva
-            const yaExiste = historial.some(h => h.id === guiaActual.id);
-            if(!yaExiste) {
-                try {
-                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'history'), {
-                        ...guiaActual,
-                        operadorUid: user.uid,
-                        operadorNombre: profile.username,
-                        createdAt: serverTimestamp()
-                    });
-                    document.getElementById('guiaForm').reset();
-                    document.getElementById('sel-remitente').value = "";
-                    document.getElementById('sel-destinatario').value = "";
-                } catch (e) {
-                    console.error("Error guardando guía:", e);
-                }
+            const existe = historial.some(h => h.id === guiaActual.id);
+            if(!existe) {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'history'), {
+                    ...guiaActual,
+                    operadorUid: user.uid,
+                    operadorName: profile.username,
+                    createdAt: serverTimestamp()
+                });
+                document.getElementById('guiaForm').reset();
             }
-            
-            // 3. Cerrar el modal
             window.cerrarModal();
-            guiaActual = null;
         };
 
-        window.cerrarModal = () => {
-            document.getElementById('previewModal').classList.add('hidden');
-        };
+        window.cerrarModal = () => document.getElementById('previewModal').classList.add('hidden');
 
+        // RENDERING UTILS
         function updateSelects() {
-            let h = '<option value="">-- Buscar en Directorio --</option>';
-            contactos.forEach(c => h += `<option value="${c.id}">${c.nombre} (${c.ciudad})</option>`);
-            document.getElementById('sel-remitente').innerHTML = h;
-            document.getElementById('sel-destinatario').innerHTML = h;
+            let options = '<option value="">-- Buscar en Directorio --</option>';
+            contactos.forEach(c => options += `<option value="${c.id}">${c.nombre} (${c.ciudad})</option>`);
+            document.getElementById('sel-remitente').innerHTML = options;
+            document.getElementById('sel-destinatario').innerHTML = options;
         }
 
-        function updateNextID() {
-            const nextVal = 1000 + historial.length;
-            document.getElementById('nextGuiaID').innerText = `ID: CNT-${nextVal}`;
+        function updateCounter() {
+            const next = 1000 + historial.length;
+            document.getElementById('nextGuiaID').innerText = `ID: CNT-${next}`;
         }
 
-        window.guardarContacto = async () => {
-            const nombre = document.getElementById('dir-nombre').value;
-            const ruc = document.getElementById('dir-ruc').value;
-            const tel = document.getElementById('dir-tel').value;
-            const ciudad = document.getElementById('dir-ciudad').value;
-            if(!nombre) return;
-            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'contacts'), {nombre, ruc, tel, ciudad});
-            document.getElementById('dir-nombre').value = '';
-            document.getElementById('dir-ruc').value = '';
-            document.getElementById('dir-tel').value = '';
-            document.getElementById('dir-ciudad').value = '';
-        };
-
-        function renderContacts() {
-            document.getElementById('lista-contactos').innerHTML = contactos.map(c => `
-                <div class="bg-white p-4 rounded-xl border flex justify-between items-center hover:shadow-md transition">
+        function renderContactsGrid() {
+            const list = document.getElementById('lista-contactos');
+            if(!list) return;
+            list.innerHTML = contactos.map(c => `
+                <div class="bg-white p-4 rounded-xl border flex justify-between items-center shadow-sm hover:shadow-md transition">
                     <div class="overflow-hidden">
-                        <p class="font-bold uppercase text-xs truncate">${c.nombre}</p>
-                        <p class="text-[9px] text-slate-500 uppercase">${c.ciudad} | ${c.tel || 'SIN TEL'}</p>
+                        <p class="font-black text-[11px] uppercase truncate text-slate-800">${c.nombre}</p>
+                        <p class="text-[9px] text-slate-500 font-bold uppercase">${c.ciudad} | ${c.tel}</p>
                     </div>
-                    <button onclick="window.borrarContacto('${c.id}')" class="text-slate-300 hover:text-red-500 p-2"><i class="fas fa-times-circle"></i></button>
+                    <button onclick="window.borrarContacto('${c.id}')" class="text-slate-300 hover:text-red-600 p-2 transition">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
                 </div>
             `).join('');
         }
 
-        window.borrarContacto = async (id) => {
-            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'contacts', id));
-        };
-
-        function renderHistory() {
-            document.getElementById('lista-historial').innerHTML = historial.map(h => `
-                <tr class="hover:bg-slate-50 border-b">
-                    <td class="p-4 font-bold text-cnt">${h.id}</td>
-                    <td class="p-4 text-[10px]">${h.fecha}</td>
-                    <td class="p-4 uppercase text-xs truncate max-w-[200px]">${h.destino.nombre}</td>
+        function renderHistoryTable() {
+            const list = document.getElementById('lista-historial');
+            if(!list) return;
+            list.innerHTML = historial.map(h => `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="p-4 font-black text-cnt">${h.id}</td>
+                    <td class="p-4 text-[10px] text-slate-500 font-bold">${h.fecha}</td>
+                    <td class="p-4 text-xs uppercase font-bold text-slate-700">${h.destino.nombre}</td>
+                    <td class="p-4 text-[10px] uppercase font-bold text-slate-400">${h.operadorName || 'N/A'}</td>
                     <td class="p-4 text-center">
-                        <button onclick="window.verHistorial('${h.id}')" class="bg-slate-100 px-3 py-1 rounded text-[9px] font-bold hover:bg-cnt hover:text-white transition">RE-IMPRIMIR</button>
+                        <button onclick="window.verHistorial('${h.id}')" class="bg-slate-100 text-slate-600 px-4 py-1 rounded-full text-[9px] font-black hover:bg-cnt hover:text-white transition uppercase">Abrir</button>
                     </td>
                 </tr>
             `).join('');
         }
 
-        window.verHistorial = (guiaIdString) => {
-            const h = historial.find(x => x.id === guiaIdString);
-            if(!h) return;
-            guiaActual = h;
-            llenarDatosModal(h);
+        window.verHistorial = (id) => {
+            const item = historial.find(x => x.id === id);
+            if(!item) return;
+            guiaActual = item;
+            
+            // Re-render Preview
+            document.getElementById('p-id').innerText = item.id;
+            document.getElementById('p-fecha').innerText = item.fecha;
+            document.getElementById('p-o-nombre').innerText = item.origen.nombre.toUpperCase();
+            document.getElementById('p-o-ruc').innerText = "RUC/CI: " + (item.origen.ruc || "N/A");
+            document.getElementById('p-o-tel').innerText = "TELF: " + (item.origen.tel || "N/A");
+            document.getElementById('p-o-ciudad').innerText = "CIUDAD: " + item.origen.ciudad.toUpperCase();
+            document.getElementById('p-o-dir').innerText = "DIR: " + item.origen.dir.toUpperCase();
+            document.getElementById('p-d-nombre').innerText = item.destino.nombre.toUpperCase();
+            document.getElementById('p-d-ruc').innerText = "RUC/CI: " + (item.destino.ruc || "N/A");
+            document.getElementById('p-d-tel').innerText = "TELF: " + (item.destino.tel || "N/A");
+            document.getElementById('p-d-ciudad').innerText = "CIUDAD: " + item.destino.ciudad.toUpperCase();
+            document.getElementById('p-d-dir').innerText = "DIR: " + item.destino.dir.toUpperCase();
+            document.getElementById('p-cant').innerText = item.carga.cant;
+            document.getElementById('p-tipo').innerText = item.carga.tipo;
+            document.getElementById('p-desc').innerText = (item.carga.desc || "").toUpperCase();
+            document.getElementById('p-peso').innerText = item.carga.peso + " KG";
+            document.getElementById('p-operador-firma').innerText = (item.operadorName || "CNT").toUpperCase();
+            
             document.getElementById('previewModal').classList.remove('hidden');
         };
 
-        function renderUsersTable() {
-            const b = document.getElementById('lista-usuarios');
-            if(!b) return;
-            b.innerHTML = usuarios.map(u => `
-                <tr class="hover:bg-slate-50">
+        function renderUsersControl(users) {
+            const container = document.getElementById('lista-usuarios');
+            if(!container) return;
+            document.getElementById('userCount').innerText = users.length;
+            
+            container.innerHTML = users.map(u => `
+                <tr class="hover:bg-slate-50 transition">
                     <td class="p-4">
-                        <div class="font-bold text-slate-800 uppercase">${u.username || 'S/N'}</div>
-                        <div class="text-[9px] text-slate-400">Última vez: ${u.lastSeen ? new Date(u.lastSeen.seconds*1000).toLocaleString() : '---'}</div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-black text-xs">
+                                ${u.username.charAt(0).toUpperCase()}
+                            </div>
+                            <span class="font-bold text-slate-700 uppercase text-xs">${u.username}</span>
+                        </div>
                     </td>
-                    <td class="p-4 font-mono text-[9px] opacity-50">${u.id}</td>
+                    <td class="p-4 font-mono text-[9px] text-slate-400">${u.id}</td>
                     <td class="p-4">
-                        <span class="role-badge ${u.role === 'admin' ? 'role-admin' : 'role-user'}">${u.role}</span>
+                        <select onchange="window.updateUserRole('${u.id}', this.value)" 
+                                class="text-[10px] p-2 border rounded-lg font-bold uppercase outline-none focus:ring-2 ring-blue-500">
+                            <option value="user" ${u.role === 'user' ? 'selected' : ''}>Operador Estándar</option>
+                            <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Administrador</option>
+                        </select>
                     </td>
                     <td class="p-4 text-center">
-                        <select onchange="window.cambiarRol('${u.id}', this.value)" class="text-[10px] p-1 border rounded bg-white font-bold outline-none">
-                            <option value="user" ${u.role === 'user' ? 'selected' : ''}>Usuario</option>
-                            <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
-                        </select>
+                        <button onclick="window.eliminarUsuario('${u.id}')" class="text-slate-300 hover:text-red-500 transition p-2">
+                            <i class="fas fa-user-minus"></i>
+                        </button>
                     </td>
                 </tr>
             `).join('');
         }
 
-        window.cambiarRol = async (uid, nuevoRol) => {
-            if(uid === user.uid) {
-                alert("No puedes cambiar tu propio rol para evitar bloqueos.");
-                renderUsersTable();
-                return;
-            }
-            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'user_registry', uid), { role: nuevoRol });
-        };
-
         initAuth();
         setInterval(() => {
-            const el = document.getElementById('liveClock');
-            if(el) el.innerText = new Date().toLocaleString();
+            const clock = document.getElementById('liveClock');
+            if(clock) clock.innerText = new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
         }, 1000);
     </script>
 </body>
